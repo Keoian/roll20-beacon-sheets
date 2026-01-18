@@ -1104,37 +1104,38 @@ export const useSheetStore = defineStore('sheet',() => {
       template: {
         name: '',
         range: '',
-        
+        isCustom: true, // True for custom spells, false for compendium spells
+
         tier_I_name: '',
         tier_I_description: '',
         tier_I_special: '',
         tier_I_action: '',
         tier_I_dice: '',
-        
+
         tier_II_name: '',
         tier_II_description: '',
         tier_II_special: '',
         tier_II_action: '',
         tier_II_dice: '',
-        
+
         tier_III_name: '',
         tier_III_description: '',
         tier_III_special: '',
         tier_III_action: '',
         tier_III_dice: '',
-        
+
         tier_IV_name: '',
         tier_IV_description: '',
         tier_IV_special: '',
         tier_IV_action: '',
         tier_IV_dice: '',
-        
+
         tier_V_name: '',
         tier_V_description: '',
         tier_V_special: '',
         tier_V_action: '',
         tier_V_dice: '',
-        
+
         tier_VI_name: '',
         tier_VI_description: '',
         tier_VI_special: '',
