@@ -202,6 +202,22 @@ export const createRelay = async ({ devMode = false, primaryStore = 'app', logMo
   let dispatch;
   if (devMode) {
     dispatch = await devRelay();
+    // Populate initValues so the sheet renders with full access in dev mode.
+    // Without this, the hydration guard below skips setPermissions (because
+    // initValues.character.id is empty), and PCView.vue:15 renders the
+    // "no access" page since meta.permissions defaults to false.
+    initValues.id = 'dev-character';
+    initValues.character = {
+      id: 'dev-character',
+      name: 'Dev Character',
+      attributes: {
+        sheet: {
+          sheet_mode: 'pc'
+        }
+      }
+    };
+    initValues.settings.owned = true;
+    initValues.settings.gm = true;
   } else {
     try {
       // Add timeout - if initRelay doesn't resolve in 10 seconds, fall back to dev mode
