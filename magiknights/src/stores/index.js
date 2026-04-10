@@ -95,7 +95,6 @@ export const useAppStore = defineStore('app', () => {
     stores.meta.name = DEFAULT_CHARACTER_NAME
     stores.meta.avatar = DEFAULT_AVATAR_URL
     stores.sheet.faction = DEFAULT_FACTION
-    stores.sheet.traits = []
   }
 
   return {

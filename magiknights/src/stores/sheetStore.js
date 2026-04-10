@@ -34,7 +34,6 @@ export const useSheetStore = defineStore('sheet',() => {
   const studentTokenImage = ref('');
   const knightTokenImage = ref('');
 
-  const character_name = ref('');
   const level = ref(1);
   const reputation = ref(0);
   const player = ref('');
@@ -858,9 +857,6 @@ export const useSheetStore = defineStore('sheet',() => {
     return comboParticipants.value >= maneuver.participants && unity.value >= maneuver.unityCost;
   };
 
-  const traits = ref([]);
-  const traitsCount = computed(() => traits.value?.length);
-
   // Auto-calculated Student Damage: "1d4+" + (STR Modifier + Reputation Level)
   const student_damage_override = ref('');
   const student_damage = computed({
@@ -1593,17 +1589,6 @@ export const useSheetStore = defineStore('sheet',() => {
     };
   });
 
-  // /*
-  // Adds a trait to the list of traits
-  //  */
-  // const addTrait = (traits) => {
-  //   const trait = {
-  //     _id: uuidv4(),
-  //     name: `Trait ${traits.value?.length + 1}`,
-  //     description: ''
-  //   }
-  //   traits.value.push(trait)
-  // }
   const addRow = (section) => {
     const item = {
       _id: uuidv4()
@@ -2042,8 +2027,6 @@ export const useSheetStore = defineStore('sheet',() => {
       soulSacrificeCount: soulSacrificeCount.value,
       rollMode: rollMode.value,
       conditions: { ...conditions.value },
-      exceededMortalLimits: exceededMortalLimits.value,
-      dexterityMod: dexterityMod.value,
       rested: rested.value,
       studiedCombat: studiedCombat.value,
       studiedSchool: studiedSchool.value,
@@ -2055,6 +2038,7 @@ export const useSheetStore = defineStore('sheet',() => {
       active_formation: activeFormation.value,
       formations_collapsed: formationsCollapsed.value,
       combat_forms_collapsed: combatFormsCollapsed.value,
+      levelAbilitiesCollapsed: levelAbilitiesCollapsed.value,
       combo_participants: comboParticipants.value,
       combos_collapsed: combosCollapsed.value,
       elemental_affinity: elemental_affinity.value,
@@ -2078,11 +2062,8 @@ export const useSheetStore = defineStore('sheet',() => {
       abilityScores: dehydrateAbilityScores(abilityScores),
       statIncreases: [...statIncreases.value],
       hp: dehydrateHp(hp),
-      hp_max: hp_max.value,
       mp: dehydrateMp(mp),
-      mp_max: mp_max.value,
       shp: dehydrateShp(shp),
-      shp_max: shp_max.value,
       crystal: dehydrateCrystal(crystal),
       student_ability: dehydrateStudentAbility(student_ability),
       fate: dehydrateFate(fate),
@@ -2107,7 +2088,6 @@ export const useSheetStore = defineStore('sheet',() => {
       knight_armor: knight_armor.value,
       knight_hasShield: knight_hasShield.value,
       knight_move: knight_move.value,
-      knight_attack: knight_attack.value,
       knight_attack_override: knight_attack_override.value,
       spell_attack_override: spell_attack_override.value,
       spell_dc_override: spell_dc_override.value,
@@ -2215,6 +2195,7 @@ export const useSheetStore = defineStore('sheet',() => {
     activeFormation.value = hydrateStore.active_formation ?? activeFormation.value;
     formationsCollapsed.value = hydrateStore.formations_collapsed ?? formationsCollapsed.value;
     combatFormsCollapsed.value = hydrateStore.combat_forms_collapsed ?? combatFormsCollapsed.value;
+    levelAbilitiesCollapsed.value = hydrateStore.levelAbilitiesCollapsed ?? levelAbilitiesCollapsed.value;
     comboParticipants.value = hydrateStore.combo_participants ?? comboParticipants.value;
     combosCollapsed.value = hydrateStore.combos_collapsed ?? combosCollapsed.value;
 
@@ -2234,7 +2215,6 @@ export const useSheetStore = defineStore('sheet',() => {
     knight_armor.value = hydrateStore.knight_armor ?? knight_armor.value;
     knight_hasShield.value = hydrateStore.knight_hasShield ?? knight_hasShield.value;
     knight_move.value = hydrateStore.knight_move ?? knight_move.value;
-    knight_attack.value = hydrateStore.knight_attack ?? knight_attack.value;
     knight_attack_override.value = hydrateStore.knight_attack_override ?? knight_attack_override.value;
     spell_attack_override.value = hydrateStore.spell_attack_override ?? spell_attack_override.value;
     spell_dc_override.value = hydrateStore.spell_dc_override ?? spell_dc_override.value;
@@ -3807,8 +3787,6 @@ export const useSheetStore = defineStore('sheet',() => {
     resetReleaseDeck,
     cycleReleaseSpellDeck,
 
-    traitsCount,
-
     interests,
     virtues,
     strengths,
@@ -3860,7 +3838,6 @@ export const useSheetStore = defineStore('sheet',() => {
     populateSpellPath,
     addRow,
     removeRow,
-    removeTrait: (traitId) => removeTrait(traits, traitId),
 
     // Battle Techniques and Combat Tactics
     resetTechniqueUses,

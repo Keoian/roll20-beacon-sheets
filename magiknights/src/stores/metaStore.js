@@ -7,12 +7,10 @@ import { reactive, ref } from 'vue'
  * This store can be reused as-is for any other Vue project.
  * */
 export const useMetaStore = defineStore('meta', () => {
-  const id = ref('')
   const name = ref('')
   const avatar = ref('')
   const bio = ref('')
   const gmNotes = ref('')
-  const token = ref({})
   const campaignId = ref(null)
   const permissions = reactive({
     isOwner: false,
@@ -30,23 +28,21 @@ export const useMetaStore = defineStore('meta', () => {
     }
   }
 
-  // Handles updating these values in the store.
+  // Handles updating these values in the store. `id` and `token` are owned
+  // by the Beacon SDK and live at the top level of the character object —
+  // read them from `initValues.character` in the relay, not from this store.
   const hydrate = (hydrateStore) => {
-    id.value = hydrateStore.id ?? id.value
     name.value = hydrateStore.name ?? name.value
     avatar.value = hydrateStore.avatar ?? avatar.value
     bio.value = hydrateStore.bio ?? bio.value
     gmNotes.value = hydrateStore.gmNotes ?? gmNotes.value
-    token.value = hydrateStore.token ?? token.value
   }
 
   return {
-    id,
     name,
     avatar,
     bio,
     gmNotes,
-    token,
     permissions,
     campaignId,
     dehydrate,
