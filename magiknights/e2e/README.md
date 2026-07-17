@@ -13,5 +13,9 @@ Require the dev server running (`npm run dev`) and Playwright Chromium
   imports into a fresh page, re-serializes, and deep-diffs every leaf field
   (~560) between the exported file and the re-imported state.
 
+- `node e2e/soul-gun.mjs` — drives the Soul Gun UI live: gun type stats,
+  HDG-only Gun Styles, Akimbo Mag Dump bonus, attachments, Aiming, Mag Dump
+  reload consumption and button gating, Sidearm having no Mag Dump.
+
 Note: `dispatch.roll` page errors during these runs are expected outside
 Roll20 — dice execution needs the Beacon backend and does not affect state.
