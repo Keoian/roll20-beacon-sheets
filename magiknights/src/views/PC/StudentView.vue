@@ -418,20 +418,20 @@ html.dark .student-type-hint {
   .fate-card{
     margin-top: 0.7cap;
     display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-    grid-template-rows: auto 40px;
+    grid-template-columns: minmax(0, 1fr);
     align-content: start;
     place-items: center;
     padding: var(--half-gap);
     align-self: start;
     gap: var(--half-gap);
     h4{
-      grid-column: 1 / -1;
+      margin: 0;
     }
     select{
       justify-self: stretch;
       width: 100%;
       min-width: 0;
+      height: 32px;
     }
     .fate-select{
       text-transform: capitalize;
