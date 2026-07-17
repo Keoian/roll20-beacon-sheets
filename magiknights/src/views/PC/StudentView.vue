@@ -226,21 +226,9 @@ const nourishedTooltip = computed(() => {
         </NotchContainer>
       </div>
 
-      <!-- Center column: Student Persona portrait over the Fate Card -->
+      <!-- Center column: Student Persona portrait -->
       <div class="student-col">
         <PersonaPortrait :image="sheet.studentTokenImage" label="Student Persona" />
-        <NotchContainer class="fate-card" width="thick" notchType="wedge">
-          <h4>Fate Card</h4>
-          <select v-model="sheet.fate.card" class="fate-select underline">
-            <option value="" selected>Select Card</option>
-            <option v-for="card in ['king', 'queen', 'knight', 'dame', 'squire', 'damsel']" :key="card" :value="card">{{ card }}</option>
-          </select>
-          <select class="underline" v-model="sheet.fate.name">
-            <option value="" selected>Select Person</option>
-            <option v-for="person in sheet.sections['npc-social'].rows" :key="person.id || 'new-person'" :value="person.id || 'New Person'">{{ person.name || 'New Person' }}</option>
-            <option v-for="person in sheet.sections['squadron-social'].rows" :key="person.id || 'new-squadmate'" :value="person.id || 'New Person'">{{ person.name || 'New Squadmate' }}</option>
-          </select>
-        </NotchContainer>
       </div>
 
       <!-- Right column (printable page 2 right): strengths, weaknesses, gear -->
@@ -415,28 +403,6 @@ html.dark .student-type-hint {
     }
   }
 
-  .fate-card{
-    margin-top: 0.7cap;
-    display: grid;
-    grid-template-columns: minmax(0, 1fr);
-    align-content: start;
-    place-items: center;
-    padding: var(--half-gap);
-    align-self: start;
-    gap: var(--half-gap);
-    h4{
-      margin: 0;
-    }
-    select{
-      justify-self: stretch;
-      width: 100%;
-      min-width: 0;
-      height: 32px;
-    }
-    .fate-select{
-      text-transform: capitalize;
-    }
-  }
   .student-type{
     text-align: center;
   }
