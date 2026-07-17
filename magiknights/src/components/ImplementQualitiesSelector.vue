@@ -6,10 +6,10 @@ const sheet = useSheetStore();
 
 const categories = {
   mana: { label: 'Mana', keys: ['manaAttunement', 'manaConduit'] },
-  damage: { label: 'Spell Damage', keys: ['embolden'] },
-  healing: { label: 'Healing', keys: ['radiance'] },
+  damage: { label: 'Damage/Healing', keys: ['embolden', 'radiance'] },
   defense: { label: 'Defense', keys: ['warding'] },
-  special: { label: 'Special', keys: ['cardConductor', 'light', 'twoHanded'] }
+  handling: { label: 'Handling', keys: ['light', 'twoHanded'] },
+  special: { label: 'Special', keys: ['cardConductor'] }
 };
 </script>
 
@@ -22,20 +22,23 @@ const categories = {
 
     <div class="modifiers-summary">
       <span v-if="sheet.hasManaAttunement" class="mod-badge mana">
-        MP: MCO x 3
+        MP: MCO × 3
       </span>
-      <span v-if="sheet.emboldenDamageBonus !== 0" class="mod-badge attack">
-        Spell Damage: +{{ sheet.emboldenDamageBonus }}
+      <span v-if="sheet.emboldenDamageBonus > 0" class="mod-badge damage">
+        Spell Dmg: +{{ sheet.emboldenDamageBonus }}
       </span>
-      <span v-if="sheet.radianceHealBonus !== 0" class="mod-badge mana">
-        Healing: +{{ sheet.radianceHealBonus }} HP
+      <span v-if="sheet.radianceHealBonus > 0" class="mod-badge healing">
+        Heal: +{{ sheet.radianceHealBonus }}
       </span>
-      <span v-if="sheet.wardingReduction !== 0" class="mod-badge dc">
-        Spell Damage Taken: -{{ sheet.wardingReduction }}
+      <span v-if="sheet.wardingReduction > 0" class="mod-badge defense">
+        Spell DR: {{ sheet.wardingReduction }}
       </span>
-      <label v-if="sheet.magical_implement.qualities.manaConduit" class="mod-badge mana conduit-tracker">
+    </div>
+
+    <div class="mana-conduit-tracker" v-if="sheet.magical_implement.qualities.manaConduit">
+      <label class="conduit-toggle" :class="{ used: sheet.manaConduitUsed }">
         <input type="checkbox" v-model="sheet.manaConduitUsed" />
-        Mana Conduit {{ sheet.manaConduitUsed ? 'used' : 'available' }} (1/Sleep Phase)
+        <span>Mana Conduit Used (1/Sleep Phase)</span>
       </label>
     </div>
 
@@ -104,14 +107,45 @@ const categories = {
       color: white;
     }
 
-    &.attack {
+    &.damage {
+      background: #c62828;
+      color: white;
+    }
+
+    &.healing {
       background: #2e7d32;
       color: white;
     }
 
-    &.dc {
+    &.defense {
       background: #6a1b9a;
       color: white;
+    }
+  }
+}
+
+.mana-conduit-tracker {
+  .conduit-toggle {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.8rem;
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 4px;
+    border: 1px solid var(--borderColor);
+
+    &.used {
+      background: rgba(200, 50, 50, 0.15);
+      border-color: #c62828;
+      text-decoration: line-through;
+      opacity: 0.7;
+    }
+
+    input[type="checkbox"] {
+      margin: 0;
+      width: 14px;
+      height: 14px;
     }
   }
 }

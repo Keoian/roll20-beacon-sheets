@@ -1,87 +1,94 @@
 <script setup>
 import { computed } from 'vue';
 import { useSheetStore } from '@/stores/sheetStore';
-import RepeatingSection from './RepeatingSection.vue';
-import RepeatingItem from './RepeatingItem.vue';
 
 const sheet = useSheetStore();
 
 const attachmentTypes = ['scope', 'magazine', 'rail', 'muzzle'];
 
-const stats = computed(() => sheet.gunTypeStats);
-const styles = computed(() => sheet.availableGunStyles);
+function addAttachment() {
+  sheet.soul_gun.attachments.push({ name: '', type: 'scope', effect: '' });
+}
+
+function removeAttachment(index) {
+  sheet.soul_gun.attachments.splice(index, 1);
+}
+
+const showStyle = computed(() => {
+  return sheet.availableGunStyles.length > 0;
+});
+
+const canMagDump = computed(() => {
+  return sheet.gunTypeStats.md > 0;
+});
 </script>
 
 <template>
   <div class="gun-config-selector">
     <!-- Gun Type -->
-    <div class="gun-row">
-      <label class="field-label" for="gun-type-select">Gun Type</label>
-      <select id="gun-type-select" class="input-field" v-model="sheet.soul_gun.gunType">
-        <option v-for="(type, key) in sheet.gunTypeData" :key="key" :value="key">
-          {{ type.name }} ({{ key.toUpperCase() }})
+    <div class="gun-field">
+      <label class="field-label">Gun Type</label>
+      <select class="input-field" v-model="sheet.soul_gun.gunType">
+        <option v-for="(data, key) in sheet.gunTypeData" :key="key" :value="key">
+          {{ data.name }} ({{ data.abbr }})
         </option>
       </select>
     </div>
 
-    <!-- Gun type stats -->
+    <!-- Gun Stats Display -->
     <div class="gun-stats">
-      <span class="stat-badge">E-Range: {{ stats.eRange }}ft</span>
-      <span class="stat-badge">Damage: {{ stats.damage }}</span>
-      <span class="stat-badge">ROF: {{ stats.rf }}/{{ stats.md || '—' }}</span>
+      <span class="stat-item"><strong>E-Range:</strong> {{ sheet.gunTypeStats.eRange }} ft</span>
+      <span class="stat-item"><strong>Damage:</strong> {{ sheet.gunTypeStats.damage }}</span>
+      <span class="stat-item"><strong>RF:</strong> {{ sheet.gunTypeStats.rf }}d8</span>
+      <span class="stat-item" v-if="canMagDump"><strong>MD:</strong> {{ sheet.effectiveMD }}d8</span>
+      <span class="stat-item" v-else><strong>MD:</strong> —</span>
     </div>
-    <div class="gun-special" v-if="stats.special">{{ stats.special }}</div>
 
-    <!-- Gun Style (HDG and SMG only) -->
-    <div class="gun-row" v-if="styles.length">
-      <label class="field-label" for="gun-style-select">Gun Style</label>
-      <select id="gun-style-select" class="input-field" v-model="sheet.soul_gun.gunStyle">
+    <!-- Special Ability -->
+    <div class="gun-special" v-if="sheet.gunTypeStats.special">
+      <span class="special-label">Special:</span> {{ sheet.gunTypeStats.special }}
+    </div>
+
+    <!-- Gun Style (HDG/SMG only) -->
+    <div class="gun-field" v-if="showStyle">
+      <label class="field-label">Gun Style</label>
+      <select class="input-field" v-model="sheet.soul_gun.gunStyle">
         <option value="">None</option>
-        <option v-for="style in styles" :key="style.key" :value="style.key">
+        <option v-for="style in sheet.availableGunStyles" :key="style.key" :value="style.key">
           {{ style.name }}
         </option>
       </select>
-    </div>
-    <div class="gun-special" v-if="sheet.gunStyleData[sheet.soul_gun.gunStyle]">
-      {{ sheet.gunStyleData[sheet.soul_gun.gunStyle].effect }}
+      <div class="style-effect" v-if="sheet.soul_gun.gunStyle && sheet.gunStyleData[sheet.soul_gun.gunStyle]">
+        {{ sheet.gunStyleData[sheet.soul_gun.gunStyle].effect }}
+      </div>
     </div>
 
-    <!-- Firing pool state -->
+    <!-- Combat State -->
     <div class="gun-state">
-      <label class="state-toggle" :class="{ active: sheet.soul_gun.isAiming }">
-        <input type="checkbox" v-model="sheet.soul_gun.isAiming" />
-        Aiming (+1 to one die)
+      <label class="state-toggle">
+        <input type="checkbox" v-model="sheet.soul_gun.aimed" />
+        <span>Aimed (+1 to one die)</span>
       </label>
-      <label class="state-toggle" :class="{ warning: !sheet.soul_gun.hasReloaded }">
+      <label class="state-toggle">
         <input type="checkbox" v-model="sheet.soul_gun.hasReloaded" />
-        {{ sheet.soul_gun.hasReloaded ? 'Loaded' : 'Reload needed (Standard Action)' }}
+        <span>Reloaded</span>
       </label>
-      <div class="gun-row">
-        <label class="field-label" for="firing-pool-bonus">Firing Pool Bonus</label>
-        <input id="firing-pool-bonus" class="input-field pool-bonus" type="number" v-model.number="sheet.soul_gun.firingPoolBonus" />
-      </div>
     </div>
 
     <!-- Attachments -->
     <div class="attachments-section">
-      <div class="category-label">Attachments (1 Rune Slot each)</div>
-      <RepeatingSection name="gunAttachments">
-        <RepeatingItem
-          v-for="row in sheet.sections.gunAttachments.rows"
-          :key="row._id"
-          :row="row"
-          name="gunAttachments"
-        >
-          <div class="attachment-row">
-            <input class="input-field" type="text" v-model="row.name" placeholder="Attachment name" />
-            <select class="input-field" v-model="row.type">
-              <option value="">Type</option>
-              <option v-for="t in attachmentTypes" :key="t" :value="t">{{ t.charAt(0).toUpperCase() + t.slice(1) }}</option>
-            </select>
-            <input class="input-field" type="text" v-model="row.effect" placeholder="Effect" />
-          </div>
-        </RepeatingItem>
-      </RepeatingSection>
+      <div class="section-header">
+        <span class="field-label">Attachments</span>
+        <button class="add-btn" @click="addAttachment">+</button>
+      </div>
+      <div v-for="(att, idx) in sheet.soul_gun.attachments" :key="idx" class="attachment-row">
+        <input class="input-field att-name" type="text" v-model="att.name" placeholder="Name" />
+        <select class="input-field att-type" v-model="att.type">
+          <option v-for="t in attachmentTypes" :key="t" :value="t">{{ t }}</option>
+        </select>
+        <input class="input-field att-effect" type="text" v-model="att.effect" placeholder="Effect" />
+        <button class="remove-btn" @click="removeAttachment(idx)">×</button>
+      </div>
     </div>
   </div>
 </template>
@@ -92,67 +99,64 @@ const styles = computed(() => sheet.availableGunStyles);
   gap: var(--tiny-gap);
 }
 
-.gun-row {
+.gun-field {
   display: grid;
-  grid-template-columns: auto 1fr;
-  align-items: center;
-  gap: 8px;
+  gap: 2px;
 
   .field-label {
-    font-size: 0.75rem;
+    font-size: 0.7rem;
     font-weight: bold;
-    color: var(--header-blue);
     text-transform: uppercase;
+    color: var(--header-blue);
   }
 
-  .pool-bonus {
-    max-width: 70px;
+  .style-effect {
+    font-size: 0.7rem;
+    color: #666;
+    padding: 2px 4px;
+    background: rgba(0, 0, 0, 0.03);
+    border-radius: 2px;
   }
 }
 
 .gun-stats {
   display: flex;
-  gap: 8px;
   flex-wrap: wrap;
+  gap: 8px;
+  font-size: 0.75rem;
+  padding: 4px 6px;
+  background: rgba(74, 74, 138, 0.08);
+  border-radius: 3px;
 
-  .stat-badge {
-    font-size: 0.75rem;
-    font-weight: bold;
-    padding: 2px 8px;
-    border-radius: 3px;
-    background: var(--header-blue);
-    color: white;
+  .stat-item {
+    white-space: nowrap;
   }
 }
 
 .gun-special {
   font-size: 0.7rem;
-  color: #666;
-  font-style: italic;
+  color: #555;
+  padding: 2px 4px;
+
+  .special-label {
+    font-weight: bold;
+    color: var(--header-blue);
+  }
 }
 
 .gun-state {
-  display: grid;
-  gap: 4px;
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
 
   .state-toggle {
     display: flex;
     align-items: center;
-    gap: 6px;
-    font-size: 0.8rem;
+    gap: 4px;
+    font-size: 0.75rem;
     cursor: pointer;
 
-    &.active {
-      color: #2e7d32;
-      font-weight: bold;
-    }
-
-    &.warning {
-      color: #c62828;
-      font-weight: bold;
-    }
-
-    input[type='checkbox'] {
+    input[type="checkbox"] {
       margin: 0;
       width: 14px;
       height: 14px;
@@ -164,25 +168,79 @@ const styles = computed(() => sheet.availableGunStyles);
   display: grid;
   gap: 4px;
 
-  .category-label {
-    font-size: 0.7rem;
-    font-weight: bold;
-    text-transform: uppercase;
-    color: var(--header-blue);
-    border-bottom: 1px solid var(--borderColor);
-    padding-bottom: 2px;
+  .section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+
+    .field-label {
+      font-size: 0.7rem;
+      font-weight: bold;
+      text-transform: uppercase;
+      color: var(--header-blue);
+    }
+
+    .add-btn {
+      padding: 0 6px;
+      font-size: 0.8rem;
+      background: var(--header-blue);
+      color: white;
+      border: none;
+      border-radius: 3px;
+      cursor: pointer;
+      line-height: 1.4;
+
+      &:hover {
+        opacity: 0.85;
+      }
+    }
   }
 
   .attachment-row {
     display: grid;
-    grid-template-columns: 1fr auto 1fr;
+    grid-template-columns: 1fr auto 1fr auto;
     gap: 4px;
+    align-items: center;
+
+    .att-name, .att-effect {
+      font-size: 0.75rem;
+      padding: 2px 4px;
+    }
+
+    .att-type {
+      font-size: 0.7rem;
+      padding: 1px 2px;
+      width: auto;
+    }
+
+    .remove-btn {
+      padding: 0 4px;
+      font-size: 0.9rem;
+      background: none;
+      border: none;
+      color: #c62828;
+      cursor: pointer;
+      line-height: 1;
+
+      &:hover {
+        color: #e53935;
+      }
+    }
   }
 }
 
 html.dark {
   .gun-special {
     color: #aaa;
+  }
+
+  .gun-field .style-effect {
+    color: #aaa;
+    background: rgba(255, 255, 255, 0.05);
+  }
+
+  .gun-stats {
+    background: rgba(74, 74, 138, 0.2);
   }
 }
 </style>

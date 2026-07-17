@@ -1,4 +1,5 @@
 <script setup>
+import { computed } from 'vue';
 import { useSheetStore } from '@/stores';
 
 import RepeatingItem from './RepeatingItem.vue';
@@ -10,20 +11,16 @@ const props = defineProps({
   name: String
 });
 
-// Heart Stage progression per the compendium:
-// Threatening -> Hostile -> Cold -> Neutral -> Warm -> Friendly -> Sympathetic
-const heartStages = [
-  { value: 'threatening', label: 'Threatening' },
-  { value: 'hostile', label: 'Hostile' },
-  { value: 'cold', label: 'Cold' },
-  { value: 'neutral', label: 'Neutral' },
-  { value: 'warm', label: 'Warm' },
-  { value: 'friendly', label: 'Friendly' },
-  { value: 'sympathetic', label: 'Sympathetic' }
-];
+// SRD Bond Levels: NPC Bonds and Magi-Knight (squadron) Bonds use different SP tables
+const bondStages = computed(() => sheet.bondStageData[props.name] || sheet.bondStageData.npc);
 
-const heartStageLabel = (value) => {
-  return heartStages.find(stage => stage.value === value)?.label || 'Neutral';
+const stageForRow = (item) => {
+  return sheet.getBondStageForSP(Number(item.points) || 0, props.name);
+};
+
+const stageInfo = (item) => {
+  const value = stageForRow(item);
+  return bondStages.value.find(stage => stage.value === value) || bondStages.value[0];
 };
 </script>
 
@@ -31,8 +28,8 @@ const heartStageLabel = (value) => {
   <div class="social-section">
     <div class="social-header">
       <h5>name</h5>
-      <h5>social points</h5>
-      <h5>heart stage</h5>
+      <h5>bond level</h5>
+      <h5>SP</h5>
       <h5>bond ability</h5>
     </div>
     <RepeatingSection :name="`${name}-social`">
@@ -40,17 +37,19 @@ const heartStageLabel = (value) => {
         <Collapsible class="social-content" :default="item.collapsed" @collapse="item.collapsed = !item.collapsed">
           <template v-slot:collapsed>
             <span>{{ item.name || 'New Bond' }}</span>
+            <span class="heart-stage-label">{{ stageInfo(item).label }}</span>
             <span>{{ item.points }}</span>
-            <span class="heart-stage-tag" :class="item.heartStage || 'neutral'">{{ heartStageLabel(item.heartStage) }}</span>
             <span>{{ item.bond_ability }}</span>
           </template>
           <template v-slot:expanded>
-            <input type="text" class="underline" v-model="item.name">
-            <input type="number" class="underline" v-model="item.points">
-            <select class="underline" v-model="item.heartStage">
-              <option v-for="stage in heartStages" :key="stage.value" :value="stage.value">{{ stage.label }}</option>
-            </select>
-            <textarea class="underline" v-model="item.bond_ability"></textarea>
+            <input type="text" class="underline" v-model="item.name" placeholder="Name">
+            <div class="heart-stage-row">
+              <span class="heart-stage-label">{{ stageInfo(item).label }}</span>
+              <span class="sp-threshold-hint">{{ stageInfo(item).min }}–{{ stageInfo(item).max }} SP</span>
+              <span class="bond-ability-hint">{{ stageInfo(item).ability }}</span>
+            </div>
+            <input type="number" class="underline" v-model="item.points" min="0" max="100">
+            <textarea class="underline" v-model="item.bond_ability" placeholder="Bond ability notes..."></textarea>
           </template>
         </Collapsible>
       </RepeatingItem>
@@ -61,7 +60,7 @@ const heartStageLabel = (value) => {
 <style lang="scss">
 .social-section{
   display: grid;
-  grid-template-columns: 1fr 50px 100px 1fr;
+  grid-template-columns: 1fr 90px 40px 1fr;
   gap: 1px;
   &,
   .repcontainer{
@@ -97,24 +96,26 @@ const heartStageLabel = (value) => {
       border: 0;
     }
   }
-  .heart-stage-tag{
-    font-size: 0.75rem;
+  .heart-stage-label{
+    font-size: 0.85em;
+    text-align: center;
     font-weight: bold;
-
-    &.threatening,
-    &.hostile{
-      color: #c62828;
-    }
-    &.cold{
-      color: #6d4c41;
-    }
-    &.warm,
-    &.friendly{
-      color: #2e7d32;
-    }
-    &.sympathetic{
-      color: var(--header-blue);
-    }
+  }
+  .heart-stage-row {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .sp-threshold-hint {
+    font-size: 0.7em;
+    opacity: 0.6;
+    text-align: center;
+  }
+  .bond-ability-hint {
+    font-size: 0.65em;
+    opacity: 0.7;
+    text-align: center;
+    font-style: italic;
   }
 }
 </style>

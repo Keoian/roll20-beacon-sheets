@@ -23,10 +23,34 @@ const addSpell = (id) => {
     openSpellEdit(item);
   }
 }
+const onPathSelect = (event) => {
+  sheet.populateSpellPath(modalObj.value, event.target.value);
+};
+const tierTooltip = (item, tier) => {
+  const fields = [
+    ['Name', item[`tier_${tier}_name`]],
+    ['Dice', item[`tier_${tier}_dice`]],
+    ['Action', item[`tier_${tier}_action`]],
+    ['Special', item[`tier_${tier}_special`]],
+    ['Description', item[`tier_${tier}_description`]]
+  ];
+  return fields.filter(([, v]) => v).map(([k, v]) => `${k}: ${v}`).join('\n');
+};
 </script>
 
 <template>
   <Modal class="spell-backdrop" mclass="spell-modal" @close="close" v-show="show">
+    <div class="flex-box half-gap grow-label">
+      <label for="spell-path-select">Path:</label>
+      <select class="underline" id="spell-path-select"
+              :value="modalObj.pathSelection || 'Custom'"
+              @change="onPathSelect">
+        <option value="Custom">Custom</option>
+        <option v-for="path in sheet.availableSpellPaths" :key="path" :value="path">
+          {{ path }}
+        </option>
+      </select>
+    </div>
     <div class="flex-box half-gap grow-label">
       <label for="spell-name">Name:</label>
       <input class="underline" type="text" v-model="modalObj.name" id="spell-name">
@@ -63,7 +87,7 @@ const addSpell = (id) => {
     <RepeatingItem v-for="item in sheet.sections.spells.rows" :key="item._id" :row="item" name="spells" class="gear-item">
       <h5 class="spell-header">{{ item.name || 'Spell Path' }}</h5>
       <button class="overlay-opener material-symbols-outlined" @click="openSpellEdit(item)">edit</button>
-      <button v-for="tier in ['I','II','III','IV','V','VI']" @click="sheet.rollSpell(item,tier)">{{ item[`tier_${tier}_dice`] || item[`tier_${tier}_name`] || "Spell's effect" }}</button>
+      <button v-for="tier in ['I','II','III','IV','V','VI']" :title="tierTooltip(item, tier)" :disabled="!sheet.isTierUnlocked(tier)" @click="sheet.rollSpell(item,tier)">{{ item[`tier_${tier}_name`] || item[`tier_${tier}_dice`] || "Spell's effect" }}</button>
     </RepeatingItem>
   </RepeatingSection>
 </template>

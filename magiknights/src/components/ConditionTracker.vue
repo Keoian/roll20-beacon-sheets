@@ -56,7 +56,7 @@ const clearAllConditions = () => {
 </script>
 
 <template>
-  <NotchContainer width="thick" :notch="20" class="condition-container">
+  <NotchContainer width="thick" notchType="curve" class="condition-container">
     <div class="condition-header" @click="isExpanded = !isExpanded">
       <h3>
         <span class="material-symbols-outlined expand-icon">{{ isExpanded ? 'expand_less' : 'expand_more' }}</span>
@@ -108,6 +108,24 @@ const clearAllConditions = () => {
             />
             <span class="condition-name">{{ cond.name }}</span>
           </label>
+        </div>
+      </div>
+    </div>
+
+    <div class="resist-section">
+      <div class="category-label">Resist Modifiers</div>
+      <div class="resist-grid">
+        <div v-for="type in ['physical', 'magic', 'horror', 'purity']" :key="type" class="resist-row">
+          <span class="resist-type-label">{{ type.charAt(0).toUpperCase() + type.slice(1) }}</span>
+          <label class="resist-toggle" :class="{ active: sheet.resistModifiers[type].advantage }">
+            <input type="checkbox" v-model="sheet.resistModifiers[type].advantage" />
+            Adv
+          </label>
+          <label class="resist-toggle disadv" :class="{ active: sheet.resistModifiers[type].disadvantage || sheet.conditionResistDisadvantage[type] }">
+            <input type="checkbox" v-model="sheet.resistModifiers[type].disadvantage" :disabled="sheet.conditionResistDisadvantage[type]" />
+            Dis
+          </label>
+          <span v-if="sheet.conditionResistDisadvantage[type]" class="resist-condition-note">(Auto)</span>
         </div>
       </div>
     </div>
@@ -185,15 +203,15 @@ const clearAllConditions = () => {
 .clear-all-btn {
   width: 100%;
   padding: 6px;
-  background: var(--borderColor);
-  color: var(--masterBack);
-  border: none;
+  background: transparent;
+  color: var(--color);
+  border: 1px solid var(--borderColor);
   border-radius: 3px;
   cursor: pointer;
   font-size: 0.75rem;
 
   &:hover {
-    opacity: 0.9;
+    background: color-mix(in srgb, var(--borderColor) 15%, transparent);
   }
 }
 
@@ -265,5 +283,52 @@ html.dark {
       background: rgba(198, 40, 40, 0.3);
     }
   }
+}
+
+.resist-section {
+  margin-top: var(--tiny-gap);
+}
+
+.resist-grid {
+  display: grid;
+  gap: 2px;
+  margin-top: 2px;
+}
+
+.resist-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.75rem;
+}
+
+.resist-type-label {
+  min-width: 50px;
+  font-weight: bold;
+  font-size: 0.85em;
+}
+
+.resist-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  cursor: pointer;
+  padding: 1px 4px;
+  border-radius: 3px;
+  opacity: 0.6;
+  input { width: 12px; height: 12px; }
+  &.active {
+    opacity: 1;
+    background: rgba(100, 200, 100, 0.2);
+  }
+  &.disadv.active {
+    background: rgba(200, 100, 100, 0.2);
+  }
+}
+
+.resist-condition-note {
+  font-size: 0.7em;
+  color: rgba(255, 100, 100, 0.8);
+  font-style: italic;
 }
 </style>

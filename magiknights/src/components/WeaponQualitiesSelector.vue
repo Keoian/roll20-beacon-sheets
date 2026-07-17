@@ -5,10 +5,9 @@ import { useSheetStore } from '@/stores/sheetStore';
 const sheet = useSheetStore();
 
 const categories = {
-  trade: { label: 'Trade-Off (choose before rolling)', keys: ['accurate', 'massive'] },
-  trigger: { label: 'On Attack Roll 16+', keys: ['forceful', 'ensnaring', 'staggeringBlow'] },
-  attack: { label: 'Attack', keys: ['finesse'] },
-  special: { label: 'Special', keys: ['coupled', 'twoHanded', 'veilPiercing', 'vicious'] }
+  trade: { label: 'Trade-Off (Per-Roll Choice)', keys: ['accurate', 'massive'] },
+  trigger: { label: 'Triggered (On Roll 16+)', keys: ['forceful', 'ensnaring', 'staggeringBlow'] },
+  special: { label: 'Special', keys: ['coupled', 'finesse', 'veilPiercing', 'twoHanded', 'vicious'] }
 };
 
 // Warning for two-handed + shield conflict
@@ -24,11 +23,8 @@ const hasTwoHandedConflict = computed(() => {
       <span class="quality-tag" v-for="q in sheet.activeWeaponQualities" :key="q">{{ q }}</span>
     </div>
 
-    <div class="modifiers-summary" v-if="sheet.soul_weapon.qualities.veilPiercing">
-      <label class="mod-badge crit veil-piercing-tracker">
-        <input type="checkbox" v-model="sheet.veilPiercingUsed" />
-        Veil-Piercing auto-hit {{ sheet.veilPiercingUsed ? 'used' : 'available' }} (1/Encounter)
-      </label>
+    <div class="modifiers-summary" v-if="sheet.veilPiercingUsed && sheet.soul_weapon.qualities.veilPiercing">
+      <span class="mod-badge used">Veil-Piercing: Used this encounter</span>
     </div>
 
     <div v-if="hasTwoHandedConflict" class="conflict-warning">
@@ -95,19 +91,9 @@ const hasTwoHandedConflict = computed(() => {
     padding: 2px 8px;
     border-radius: 3px;
 
-    &.attack {
-      background: #2e7d32;
+    &.used {
+      background: #9e9e9e;
       color: white;
-    }
-
-    &.damage {
-      background: #c62828;
-      color: white;
-    }
-
-    &.crit {
-      background: #f9a825;
-      color: black;
     }
   }
 }

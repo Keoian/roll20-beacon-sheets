@@ -9,13 +9,6 @@ Before starting work, ensure the dev server is running:
 2. If not running, start it in background: `npm run dev &`
 3. Wait 5 seconds for startup, then verify with Playwright: navigate to `http://localhost:5173` and confirm the page loads
 
-## Environment Setup
-
-Before starting work, ensure the dev server is running:
-1. Check if port 5173 is in use: `lsof -i :5173`
-2. If not running, start it in background: `npm run dev &`
-3. Wait 5 seconds for startup, then verify with Playwright: navigate to `http://localhost:5173` and confirm the page loads
-
 ## Instructions
 
 1. **Read `ralph/activity.md`** first to understand what has already been completed.

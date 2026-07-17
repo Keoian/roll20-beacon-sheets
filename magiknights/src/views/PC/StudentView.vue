@@ -1,6 +1,7 @@
 <script setup>
 
 import { useSheetStore } from '@/stores/sheetStore';
+import { computed } from 'vue';
 
 import SplitMods from '@/components/SplitMods.vue';
 import BackgroundItems from '@/components/BackgroundItems.vue';
@@ -10,7 +11,7 @@ import RepeatingItem from '@/components/RepeatingItem.vue';
 import Collapsible from '@/components/Collapsible.vue';
 import SocialSection from '@/components/SocialSection.vue';
 import NotchContainer from '@/components/NotchContainer.vue';
-import MagiSquire from '@/components/MagiSquire.vue';
+
 
 const sheet = useSheetStore();
 const studentAttributes = [
@@ -49,6 +50,98 @@ function studentAbilitySummary()
   }
   return sheet.student_ability.description;
 }
+
+// Studied toggle: cycles empty → X (Combat) → O (School) → XO (Both) → empty
+const studiedDisplay = computed(() => {
+  if (sheet.studiedCombat && sheet.studiedSchool) return 'XO';
+  if (sheet.studiedCombat) return 'X';
+  if (sheet.studiedSchool) return 'O';
+  return '';
+});
+
+function cycleStudied() {
+  if (!sheet.studiedCombat && !sheet.studiedSchool) {
+    sheet.studiedCombat = true;
+  } else if (sheet.studiedCombat && !sheet.studiedSchool) {
+    sheet.studiedCombat = false;
+    sheet.studiedSchool = true;
+  } else if (!sheet.studiedCombat && sheet.studiedSchool) {
+    sheet.studiedCombat = true;
+  } else {
+    sheet.studiedCombat = false;
+    sheet.studiedSchool = false;
+  }
+}
+
+const studiedTooltip = computed(() => {
+  if (sheet.studiedCombat && sheet.studiedSchool) {
+    return 'Studied [Combat] + [School]\n'
+      + 'Combat: +1d8 to a Weapon Attack roll (one-time use). Expires at Sleep Phase or when used.\n'
+      + 'School: +1d8 to a Student Class Check (one-time use). Expires at end of School Phase or when used.';
+  }
+  if (sheet.studiedCombat) {
+    return 'Studied [Combat]\n'
+      + 'Earned by choosing the "Combat Training" activity during Free Time Phase\n'
+      + 'Grants +1d8 to a Weapon Attack roll (one-time use)\n'
+      + 'Expires at Sleep Phase or when used, whichever comes first';
+  }
+  if (sheet.studiedSchool) {
+    return 'Studied [School]\n'
+      + 'Earned by choosing the "Study and Complete Homework" activity during Free Time Phase\n'
+      + 'Grants +1d8 to a Student Class Check (one-time use)\n'
+      + 'Expires at end of School Phase or when used, whichever comes first';
+  }
+  return 'Studied Effect\n'
+    + 'Click to cycle: Empty → X (Combat) → O (School) → XO (Both)\n'
+    + 'X = Studied [Combat]: +1d8 to Weapon Attack (one-time use)\n'
+    + 'O = Studied [School]: +1d8 to Student Class Check (one-time use)';
+});
+
+// Nourished toggle: cycles empty → X (Well Fed) → O (Rested) → XO (Both) → empty
+const nourishedDisplay = computed(() => {
+  if (sheet.wellFed && sheet.rested) return 'XO';
+  if (sheet.wellFed) return 'X';
+  if (sheet.rested) return 'O';
+  return '';
+});
+
+function cycleNourished() {
+  if (!sheet.wellFed && !sheet.rested) {
+    sheet.wellFed = true;
+  } else if (sheet.wellFed && !sheet.rested) {
+    sheet.wellFed = false;
+    sheet.rested = true;
+  } else if (!sheet.wellFed && sheet.rested) {
+    sheet.wellFed = true;
+  } else {
+    sheet.wellFed = false;
+    sheet.rested = false;
+  }
+}
+
+const nourishedTooltip = computed(() => {
+  if (sheet.wellFed && sheet.rested) {
+    return 'Well Fed + Well Rested\n'
+      + 'Well Fed: Reroll all dice on a Physical Skill Check (one-time use). Expires at Sleep Phase.\n'
+      + 'Well Rested: Reroll all dice on a Mental Skill Check (one-time use). Lost at start of next Sleep Phase.';
+  }
+  if (sheet.wellFed) {
+    return 'Well Fed\n'
+      + 'Earned by choosing "Visit a Restaurant" during Free Time Phase, or from attending a School Festival\n'
+      + 'Reroll all dice on a Physical Skill Check (one-time use)\n'
+      + 'Expires at Sleep Phase';
+  }
+  if (sheet.rested) {
+    return 'Well Rested\n'
+      + 'Earned from Refreshing or Average sleep during Sleep Phase\n'
+      + 'Reroll all dice on a Mental Skill Check (one-time use)\n'
+      + 'Lost at the start of the next Sleep Phase';
+  }
+  return 'Nourished/Rested Effect\n'
+    + 'Click to cycle: Empty → X (Well Fed) → O (Well Rested) → XO (Both)\n'
+    + 'X = Well Fed: Reroll Physical Skill Check dice (one-time use)\n'
+    + 'O = Well Rested: Reroll Mental Skill Check dice (one-time use)';
+});
 </script>
 
 <template>
@@ -56,20 +149,20 @@ function studentAbilitySummary()
 
     <SplitMods :attributes="studentAttributes" class="student-split">
       <template v-slot:content>
-        <ImageBackedLabel image="studied">
+        <ImageBackedLabel image="studied" :title="studiedTooltip">
           <template v-slot:value>
-            <input type="checkbox" v-model="sheet.studied" class="rest-check">
+            <span class="rest-check studied-toggle" @click="cycleStudied">{{ studiedDisplay }}</span>
           </template>
           <template v-slot:text>
             Studied
           </template>
         </ImageBackedLabel>
-        <ImageBackedLabel image="apple">
+        <ImageBackedLabel image="apple" :title="nourishedTooltip">
           <template v-slot:value>
-            <input type="checkbox" v-model="sheet.rested" class="rest-check">
+            <span class="rest-check studied-toggle" @click="cycleNourished">{{ nourishedDisplay }}</span>
           </template>
           <template v-slot:text>
-            Fed/Rested
+            Rested
           </template>
         </ImageBackedLabel>
       </template>
@@ -151,24 +244,22 @@ function studentAbilitySummary()
       <div class="flex-box half-gap grow-label">
         <label for="herald-bond-level">Bond Level</label>
         <select class="underline" v-model="sheet.herald.bondLevel" id="herald-bond-level">
-          <option :value="1">I - Initial Bond</option>
-          <option :value="2">II - Strengthened</option>
-          <option :value="3">III - Deep Connection</option>
-          <option :value="4">IV - Profound Bond</option>
-          <option :value="5">V - Ultimate Bond</option>
+          <option :value="1">I - Envoy of Doom</option>
+          <option :value="2">II - Envoy of Imitation</option>
+          <option :value="3">III - Medium of Doubt</option>
+          <option :value="4">IV - Mentor of Advent</option>
+          <option :value="5">V - Advocate of Hope</option>
         </select>
       </div>
       <div class="herald-tier-access">
         <span class="tier-label">Spell Tier Access:</span>
         <span class="tier-badges">
-          <span class="tier-badge unlocked">I</span>
-          <span class="tier-badge unlocked">II</span>
-          <span class="tier-badge unlocked">III</span>
-          <span class="tier-badge unlocked">IV</span>
-          <span class="tier-badge unlocked">V</span>
-          <span class="tier-badge" :class="{ 'unlocked': sheet.tierVIUnlocked, 'locked': !sheet.tierVIUnlocked }">
-            VI
-            <span v-if="!sheet.tierVIUnlocked" class="lock-icon" title="Requires Bond Level IV+">🔒</span>
+          <span v-for="tier in ['I','II','III','IV','V','VI']" :key="tier"
+                class="tier-badge"
+                :class="{ 'unlocked': sheet.isTierUnlocked(tier), 'locked': !sheet.isTierUnlocked(tier) }"
+                :title="!sheet.isTierUnlocked(tier) ? (tier === 'VI' ? 'Requires Level 14+ and Herald Bond IV+' : 'Requires higher level') : ''">
+            {{ tier }}
+            <span v-if="!sheet.isTierUnlocked(tier)" class="lock-icon">🔒</span>
           </span>
         </span>
       </div>
@@ -179,118 +270,9 @@ function studentAbilitySummary()
     </div>
   </NotchContainer>
 
-  <!-- Magi-Squire companion (bound to the Herald system) -->
-  <MagiSquire />
-
-  <!-- Sleep Phase effect and daily-limited abilities -->
-  <NotchContainer class="sleep-limits-container" width="thick" notchType="curve">
-    <h4>Sleep Phase &amp; Daily Limits</h4>
-    <div class="sleep-effect-row">
-      <label
-        v-for="(data, key) in sheet.sleepEffectData"
-        :key="key"
-        class="sleep-option"
-        :class="{ active: sheet.sleepEffect === key }"
-        :title="data.note"
-      >
-        <input type="radio" :value="key" v-model="sheet.sleepEffect" name="sleep-effect" />
-        {{ data.name }}
-      </label>
-    </div>
-    <div class="sleep-note">{{ sheet.sleepEffectData[sheet.sleepEffect]?.note }}</div>
-    <div class="daily-limits">
-      <label class="limit-item">
-        <input type="checkbox" v-model="sheet.sealImplantGiven" />
-        Crystalline Seal given (1/day)
-      </label>
-      <label class="limit-item">
-        <input type="checkbox" v-model="sheet.sealImplantReceived" />
-        Crystalline Seal received (1/day)
-      </label>
-      <label class="limit-item" v-if="sheet.magical_implement.qualities.manaConduit">
-        <input type="checkbox" v-model="sheet.manaConduitUsed" />
-        Mana Conduit used (1/Sleep Phase)
-      </label>
-      <label class="limit-item">
-        <input type="checkbox" v-model="sheet.freakingOutToday" />
-        Oppressive Stress today
-      </label>
-      <div class="limit-item soul-sacrifice">
-        <span>Soul Sacrifice</span>
-        <input type="number" min="0" class="underline sacrifice-count" v-model.number="sheet.soulSacrificeCount" />
-        <span>/ {{ sheet.soulSacrificeMax }} (Rep Level, per career)</span>
-      </div>
-    </div>
-  </NotchContainer>
 </template>
 
 <style lang="scss">
-.sleep-limits-container {
-  display: grid;
-  gap: var(--tiny-gap);
-
-  .sleep-effect-row {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-
-    .sleep-option {
-      display: flex;
-      align-items: center;
-      gap: 4px;
-      font-size: 0.8rem;
-      padding: 2px 8px;
-      border: 1px solid var(--borderColor);
-      border-radius: 3px;
-      cursor: pointer;
-
-      &.active {
-        border-color: var(--header-blue);
-        color: var(--header-blue);
-        font-weight: bold;
-      }
-
-      input[type='radio'] {
-        margin: 0;
-      }
-    }
-  }
-
-  .sleep-note {
-    font-size: 0.7rem;
-    font-style: italic;
-    color: #666;
-  }
-
-  .daily-limits {
-    display: grid;
-    gap: 4px;
-
-    .limit-item {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      font-size: 0.8rem;
-
-      input[type='checkbox'] {
-        margin: 0;
-        width: 14px;
-        height: 14px;
-      }
-
-      .sacrifice-count {
-        max-width: 50px;
-      }
-    }
-  }
-}
-
-html.dark {
-  .sleep-limits-container .sleep-note {
-    color: #aaa;
-  }
-}
-
 .student-view {
   display: grid;
   gap: var(--half-gap);
@@ -373,6 +355,10 @@ html.dark {
         font-family: 'Material Symbols Outlined';
       }
     }
+  }
+  .studied-toggle{
+    font-weight: bold;
+    user-select: none;
   }
   .gear-section{
     grid-column: 1 / -1;
@@ -480,4 +466,5 @@ html.dark {
     }
   }
 }
+
 </style>
