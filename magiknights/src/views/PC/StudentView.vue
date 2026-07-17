@@ -4,13 +4,13 @@ import { useSheetStore } from '@/stores/sheetStore';
 import { computed } from 'vue';
 
 import SplitMods from '@/components/SplitMods.vue';
-import BackgroundItems from '@/components/BackgroundItems.vue';
 import ImageBackedLabel from '@/components/ImageBackedLabel.vue';
 import RepeatingSection from '@/components/RepeatingSection.vue';
 import RepeatingItem from '@/components/RepeatingItem.vue';
 import Collapsible from '@/components/Collapsible.vue';
 import SocialSection from '@/components/SocialSection.vue';
 import NotchContainer from '@/components/NotchContainer.vue';
+import PersonaPortrait from '@/components/PersonaPortrait.vue';
 
 
 const sheet = useSheetStore();
@@ -188,77 +188,111 @@ const nourishedTooltip = computed(() => {
         </ImageBackedLabel>
       </template>
     </SplitMods>
-    <NotchContainer class="student-ability" notchType="none" width="thick">
-      <h4>Student Ability</h4>
-      <Collapsible class="student-ability-content" :default="sheet.student_ability.collapsed" @collapse="sheet.student_ability.collapsed = !sheet.student_ability.collapsed">
-        <template v-slot:collapsed>
-        <div class="student-ability-button">
-          <button disabled @click="sheet.studentAbilityToChat">{{ sheet.student_ability.name || 'Ability Name' }}</button>
-        </div>
-          <label class="student-ability-description-collapsed">{{ studentAbilitySummary() }}</label>
-        </template>
-        <template v-slot:expanded>
-          <input class="underline" type="text" v-model="sheet.student_ability.name" placeholder="Ability Name">
-          <textarea class="underline" v-model="sheet.student_ability.description" placeholder="Description"></textarea>
-        </template>
-      </Collapsible>
-    </NotchContainer>
-    <div>
-      <notch-container class="student-type">
-      <h4>Student Type</h4>
-      <input class="underline student-type" type="text" v-model="sheet.student_type" placeholder="Enter Student Type" list="student-type-options" @change="applyStudentTypeAbility">
-      <datalist id="student-type-options">
-        <option v-for="(data, type) in studentTypeData" :key="type" :value="type">{{ data.skills }}</option>
-      </datalist>
-      <div class="student-type-hint" v-if="studentTypeData[sheet.student_type]">
-        {{ studentTypeData[sheet.student_type].bonus }} — {{ studentTypeData[sheet.student_type].skills }}
+    <div class="student-columns">
+      <!-- Left column (printable page 2 left): type, interests, virtues, ability -->
+      <div class="student-col">
+        <notch-container class="student-type">
+          <h4>Student Type</h4>
+          <input class="underline student-type" type="text" v-model="sheet.student_type" placeholder="Enter Student Type" list="student-type-options" @change="applyStudentTypeAbility">
+          <datalist id="student-type-options">
+            <option v-for="(data, type) in studentTypeData" :key="type" :value="type">{{ data.skills }}</option>
+          </datalist>
+          <div class="student-type-hint" v-if="studentTypeData[sheet.student_type]">
+            {{ studentTypeData[sheet.student_type].bonus }} — {{ studentTypeData[sheet.student_type].skills }}
+          </div>
+        </notch-container>
+        <NotchContainer class="bio-item" width="thick" notch="10">
+          <h4>Interests</h4>
+          <textarea class="underline" v-model="sheet.interests"></textarea>
+        </NotchContainer>
+        <NotchContainer class="bio-item" width="thick" notch="10">
+          <h4>Virtues</h4>
+          <textarea class="underline" v-model="sheet.virtues"></textarea>
+        </NotchContainer>
+        <NotchContainer class="student-ability" notchType="none" width="thick">
+          <h4>Student Ability</h4>
+          <Collapsible class="student-ability-content" :default="sheet.student_ability.collapsed" @collapse="sheet.student_ability.collapsed = !sheet.student_ability.collapsed">
+            <template v-slot:collapsed>
+            <div class="student-ability-button">
+              <button disabled @click="sheet.studentAbilityToChat">{{ sheet.student_ability.name || 'Ability Name' }}</button>
+            </div>
+              <label class="student-ability-description-collapsed">{{ studentAbilitySummary() }}</label>
+            </template>
+            <template v-slot:expanded>
+              <input class="underline" type="text" v-model="sheet.student_ability.name" placeholder="Ability Name">
+              <textarea class="underline" v-model="sheet.student_ability.description" placeholder="Description"></textarea>
+            </template>
+          </Collapsible>
+        </NotchContainer>
       </div>
-    </notch-container>
-    <NotchContainer class="fate-card" width="thick" notchType="wedge">
-      <h4>Fate Card</h4>
-      <select v-model="sheet.fate.card" class="fate-select underline">
-        <option value="" selected>Select Card</option>
-        <option v-for="card in ['king', 'queen', 'knight', 'dame', 'squire', 'damsel']" :key="card" :value="card">{{ card }}</option>
-      </select>
-      <select class="underline" v-model="sheet.fate.name">
-        <option value="" selected>Select Person</option>
-        <option v-for="person in sheet.sections['npc-social'].rows" :key="person.id || 'new-person'" :value="person.id || 'New Person'">{{ person.name || 'New Person' }}</option>
-        <option v-for="person in sheet.sections['squadron-social'].rows" :key="person.id || 'new-squadmate'" :value="person.id || 'New Person'">{{ person.name || 'New Squadmate' }}</option>
-        <!--  -->
-      </select>
-    </NotchContainer>
+
+      <!-- Center column: Student Persona portrait over the Fate Card -->
+      <div class="student-col">
+        <PersonaPortrait :image="sheet.studentTokenImage" label="Student Persona" />
+        <NotchContainer class="fate-card" width="thick" notchType="wedge">
+          <h4>Fate Card</h4>
+          <select v-model="sheet.fate.card" class="fate-select underline">
+            <option value="" selected>Select Card</option>
+            <option v-for="card in ['king', 'queen', 'knight', 'dame', 'squire', 'damsel']" :key="card" :value="card">{{ card }}</option>
+          </select>
+          <select class="underline" v-model="sheet.fate.name">
+            <option value="" selected>Select Person</option>
+            <option v-for="person in sheet.sections['npc-social'].rows" :key="person.id || 'new-person'" :value="person.id || 'New Person'">{{ person.name || 'New Person' }}</option>
+            <option v-for="person in sheet.sections['squadron-social'].rows" :key="person.id || 'new-squadmate'" :value="person.id || 'New Person'">{{ person.name || 'New Squadmate' }}</option>
+          </select>
+        </NotchContainer>
+      </div>
+
+      <!-- Right column (printable page 2 right): strengths, weaknesses, gear -->
+      <div class="student-col">
+        <NotchContainer class="bio-item" width="thick" notch="10">
+          <h4>Strengths</h4>
+          <textarea class="underline" v-model="sheet.strengths"></textarea>
+        </NotchContainer>
+        <NotchContainer class="bio-item" width="thick" notch="10">
+          <h4>Weaknesses</h4>
+          <textarea class="underline" v-model="sheet.weaknesses"></textarea>
+        </NotchContainer>
+        <div class="gear-section">
+          <NotchContainer>
+            <h4>gear</h4>
+            <RepeatingSection name="gear">
+              <RepeatingItem v-for="item in sheet.sections.gear.rows" :key="item._id" :row="item" name="gear"
+                class="gear-item">
+                <NotchContainer notchType="none">
+                <Collapsible class="gear-content" :default="item.collapsed" @collapse="item.collapsed = !item.collapsed">
+                  <template v-slot:collapsed>
+                    <span>{{ item.name }}</span>
+                  </template>
+                  <template v-slot:expanded>
+                    <input class="underline" type="text" v-model="item.name" placeholder=" Item name">
+                    <textarea class="underline" v-model="item.description" placeholder=" Item description"></textarea>
+                  </template>
+                </Collapsible>
+                </NotchContainer>
+              </RepeatingItem>
+            </RepeatingSection>
+          </NotchContainer>
+        </div>
+      </div>
     </div>
 
-    <div class="gear-section">
-      <NotchContainer>
-        <h4>gear</h4>
-        <RepeatingSection name="gear">
-          <RepeatingItem v-for="item in sheet.sections.gear.rows" :key="item._id" :row="item" name="gear"
-            class="gear-item">
-            <NotchContainer notchType="none">
-            <Collapsible class="gear-content" :default="item.collapsed" @collapse="item.collapsed = !item.collapsed">
-              <template v-slot:collapsed>
-                <span>{{ item.name }}</span>
-              </template>
-              <template v-slot:expanded>
-                <input class="underline" type="text" v-model="item.name" placeholder=" Item name">
-                <textarea class="underline" v-model="item.description" placeholder=" Item description"></textarea>
-              </template>
-            </Collapsible>
-            </NotchContainer>
-          </RepeatingItem>
-        </RepeatingSection>
-      </NotchContainer>
+    <!-- Bond notebook: NPC bonds on the left page, squadron bonds on the right -->
+    <div class="bonds-row">
+      <div class="bond-page">
+        <h4>NPC Bonds</h4>
+        <NotchContainer class="notebook">
+          <SocialSection name="npc" />
+        </NotchContainer>
+      </div>
+      <div class="bond-page">
+        <h4>Magi-Knight Bonds</h4>
+        <NotchContainer class="notebook">
+          <SocialSection name="squadron" />
+        </NotchContainer>
+      </div>
     </div>
   </div>
-  <h4>NPC Bonds</h4>
-    <NotchContainer class="notebook">
-      <SocialSection name="npc" />
-    </NotchContainer>
-  <h4>Magi-Knight Bonds</h4>
-    <NotchContainer class="notebook">
-      <SocialSection name="squadron" />
-    </NotchContainer>
 
   <!-- Herald Section - Per compendium: Herald bond affects spell tier access -->
   <NotchContainer class="herald-container" width="thick" notchType="curve">
@@ -313,7 +347,6 @@ html.dark .student-type-hint {
 .student-view {
   display: grid;
   gap: var(--half-gap);
-  grid-auto-flow: dense;
 
   >.base-split {
     grid-column: 1 / -1;
@@ -327,13 +360,59 @@ html.dark .student-type-hint {
     grid-column: 1 / -1;
   }
 
-  .gear-section{
-    grid-column: 1 / -1;
+  .student-columns {
+    display: grid;
+    gap: var(--half-gap);
+    align-items: start;
+
+    @container (560px < width) {
+      grid-template-columns: 1fr 1.05fr 1fr;
+    }
+
+    @container (width <= 560px) {
+      grid-template-columns: 1fr 1fr;
+    }
   }
 
-  .notebook {
-    grid-column: 1;
-    max-height: 4px;
+  .student-col {
+    display: grid;
+    gap: var(--half-gap);
+    align-content: start;
+  }
+
+  .bio-item {
+    display: grid;
+    gap: var(--tiny-gap);
+
+    h4 {
+      text-align: center;
+      margin: 0;
+    }
+
+    textarea {
+      min-height: 5.5cap;
+      background-color: var(--masterBack);
+      color: var(--color);
+    }
+  }
+
+  .bonds-row {
+    display: grid;
+    gap: var(--half-gap);
+    align-items: start;
+
+    @container (700px < width) {
+      grid-template-columns: 1fr 1fr;
+    }
+
+    .bond-page {
+      display: grid;
+      gap: var(--tiny-gap);
+
+      h4 {
+        margin: 0;
+      }
+    }
   }
 
   .fate-card{
@@ -413,12 +492,7 @@ html.dark .student-type-hint {
 
   .notebook {
     display: grid;
-    grid-template-columns: subgrid;
     align-items: start;
-  }
-
-  @container (500px < width) {
-    grid-template-columns: 1fr 1fr;
   }
 
   .skill-container {

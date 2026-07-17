@@ -860,3 +860,29 @@ Closed the remaining SRD feature gaps:
   auto-fill of the Student Ability.
 
 Verified: vitest 269/269, `npm run build` clean.
+
+### 2026-07-17 — Layout pass: match the printable character sheet
+
+Re-arranged the PC pages to eliminate large UI gaps and follow the spirit of
+the official "MKA CharSheets Printable" PDF:
+
+- New PersonaPortrait component (arched frame, uses the Student/Magi-Knight
+  token images from Misc, placeholder hint otherwise).
+- Base Stats: explicit two columns — [Soul Eclipse Chart, ability circles,
+  Conditions] | [Crystalline Fracturing, Techniques & Tactics, Shards, Level
+  Abilities]. Fixed the Eclipse chart collapsing (size containment needs an
+  explicit box).
+- Student: printable page-2 three-column layout — [Student Type, Interests,
+  Virtues, Student Ability] | [Student Persona portrait, Fate Card] |
+  [Strengths, Weaknesses, Gear], with the bond notebook and Herald below.
+  Interests/Virtues/Strengths/Weaknesses moved here from Background (as on
+  the printable sheet).
+- Magi-Knight: printable page-3 three-column Soul Armament — [Combat Forms,
+  Soul Armor Weave, Visor, Runes] | [Magi-Knight Persona portrait] |
+  [Soul Weapon, Magical Implement, Magic Settings, Relics]; fixed a broken
+  div nesting from the section move.
+- Background: backstory + Electives/Characteristics/Player Links/Quote grid
+  with Goal Tallies, no fixed-width raggedness.
+
+Verified with Playwright screenshots of all five pages (no console errors) and
+vitest 269/269.

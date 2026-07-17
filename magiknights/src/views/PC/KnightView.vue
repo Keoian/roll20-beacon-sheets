@@ -16,6 +16,7 @@ import Collapsible from '@/components/Collapsible.vue';
 import SpellSection from '@/components/SpellSection.vue';
 import ReleaseMagic from '@/components/ReleaseMagic.vue';
 import DivinationDeck from '@/components/DivinationDeck.vue';
+import PersonaPortrait from '@/components/PersonaPortrait.vue';
 import WeaponQualitiesSelector from '@/components/WeaponQualitiesSelector.vue';
 import GunQualitiesSelector from '@/components/GunQualitiesSelector.vue';
 import ImplementQualitiesSelector from '@/components/ImplementQualitiesSelector.vue';
@@ -250,6 +251,49 @@ watch(() => sheet.elemental_affinity, (newAffinity) => {
     <h3 class="group-header">Soul Armament</h3>
     <div class="soul-armament-grid">
       <div class="soul-armament-left">
+        <NotchContainer class="combat-form-container basic-item" width="thick" notchType="curve">
+          <h4>Combat Forms</h4>
+          <Collapsible class="basic-item" :default="sheet.combatFormsCollapsed" @collapse="sheet.combatFormsCollapsed = !sheet.combatFormsCollapsed">
+            <template v-slot:collapsed>
+              <div class="combat-form-summary">
+                <span v-if="sheet.activeCombatForm && sheet.combatFormData[sheet.activeCombatForm]" class="form-badge active-badge">Active</span>
+                <span v-if="sheet.activeCombatForm && sheet.combatFormData[sheet.activeCombatForm]" class="form-badge form-name-badge">{{ sheet.combatFormData[sheet.activeCombatForm].name.split(' - ')[1] }}</span>
+                <span v-if="sheet.activeCombatForm && sheet.combatFormMastery[sheet.activeCombatForm]" class="form-badge mastery-badge">Mastered</span>
+                <span v-if="!sheet.activeCombatForm" class="form-badge inactive-badge">No Active Form</span>
+              </div>
+            </template>
+            <template v-slot:expanded>
+              <div v-if="sheet.activeCombatForm && sheet.combatFormData[sheet.activeCombatForm]" class="active-form-banner">
+                <div class="banner-header">
+                  <strong>{{ sheet.combatFormData[sheet.activeCombatForm].name }}</strong>
+                  <button class="form-deactivate-btn" @click="sheet.activeCombatForm = ''" title="Deactivate form">&times;</button>
+                </div>
+                <p class="banner-description">{{ sheet.combatFormData[sheet.activeCombatForm].description }}</p>
+                <p v-if="sheet.combatFormMastery[sheet.activeCombatForm]" class="banner-mastery">Mastery: {{ sheet.combatFormData[sheet.activeCombatForm].mastery }}</p>
+              </div>
+              <div class="combat-form-list">
+                <div v-for="(form, key) in sheet.combatFormData" :key="key" class="form-row" :class="{ active: sheet.activeCombatForm === key }">
+                  <button
+                    class="form-activate-btn"
+                    :class="{ active: sheet.activeCombatForm === key }"
+                    @click="sheet.activeCombatForm = sheet.activeCombatForm === key ? '' : key"
+                    :title="form.name"
+                  >{{ key.replace('form', '') }}</button>
+                  <span class="form-short-name">{{ form.name.split(' - ')[1] }}</span>
+                  <label class="form-known-toggle" title="Known (learned from the Herald or via Combat Form Drills)">
+                    <input type="checkbox" v-model="sheet.combatFormsKnown[key]">
+                    <span class="known-icon material-symbols-outlined" :class="{ known: sheet.combatFormsKnown[key] }">school</span>
+                  </label>
+                  <label class="form-mastery-toggle" :title="'Mastery (9th Level + Combat Form Drills): ' + form.mastery">
+                    <input type="checkbox" v-model="sheet.combatFormMastery[key]">
+                    <span class="star-icon material-symbols-outlined" :class="{ mastered: sheet.combatFormMastery[key] }">star</span>
+                  </label>
+                </div>
+              </div>
+            </template>
+          </Collapsible>
+        </NotchContainer>
+
         <NotchContainer class="armor-weave-container basic-item" width="thick" notchType="curve">
           <h4>Soul Armor Weave</h4>
           <Collapsible class="basic-item" :default="sheet.armor_weave.collapsed" @collapse="sheet.armor_weave.collapsed = !sheet.armor_weave.collapsed">
@@ -348,49 +392,11 @@ watch(() => sheet.elemental_affinity, (newAffinity) => {
             </RepeatingItem>
           </RepeatingSection>
         </NotchContainer>
+      </div>
 
-        <NotchContainer class="combat-form-container basic-item" width="thick" notchType="curve">
-          <h4>Combat Forms</h4>
-          <Collapsible class="basic-item" :default="sheet.combatFormsCollapsed" @collapse="sheet.combatFormsCollapsed = !sheet.combatFormsCollapsed">
-            <template v-slot:collapsed>
-              <div class="combat-form-summary">
-                <span v-if="sheet.activeCombatForm && sheet.combatFormData[sheet.activeCombatForm]" class="form-badge active-badge">Active</span>
-                <span v-if="sheet.activeCombatForm && sheet.combatFormData[sheet.activeCombatForm]" class="form-badge form-name-badge">{{ sheet.combatFormData[sheet.activeCombatForm].name.split(' - ')[1] }}</span>
-                <span v-if="sheet.activeCombatForm && sheet.combatFormMastery[sheet.activeCombatForm]" class="form-badge mastery-badge">Mastered</span>
-                <span v-if="!sheet.activeCombatForm" class="form-badge inactive-badge">No Active Form</span>
-              </div>
-            </template>
-            <template v-slot:expanded>
-              <div v-if="sheet.activeCombatForm && sheet.combatFormData[sheet.activeCombatForm]" class="active-form-banner">
-                <div class="banner-header">
-                  <strong>{{ sheet.combatFormData[sheet.activeCombatForm].name }}</strong>
-                  <button class="form-deactivate-btn" @click="sheet.activeCombatForm = ''" title="Deactivate form">&times;</button>
-                </div>
-                <p class="banner-description">{{ sheet.combatFormData[sheet.activeCombatForm].description }}</p>
-                <p v-if="sheet.combatFormMastery[sheet.activeCombatForm]" class="banner-mastery">Mastery: {{ sheet.combatFormData[sheet.activeCombatForm].mastery }}</p>
-              </div>
-              <div class="combat-form-list">
-                <div v-for="(form, key) in sheet.combatFormData" :key="key" class="form-row" :class="{ active: sheet.activeCombatForm === key }">
-                  <button
-                    class="form-activate-btn"
-                    :class="{ active: sheet.activeCombatForm === key }"
-                    @click="sheet.activeCombatForm = sheet.activeCombatForm === key ? '' : key"
-                    :title="form.name"
-                  >{{ key.replace('form', '') }}</button>
-                  <span class="form-short-name">{{ form.name.split(' - ')[1] }}</span>
-                  <label class="form-known-toggle" title="Known (learned from the Herald or via Combat Form Drills)">
-                    <input type="checkbox" v-model="sheet.combatFormsKnown[key]">
-                    <span class="known-icon material-symbols-outlined" :class="{ known: sheet.combatFormsKnown[key] }">school</span>
-                  </label>
-                  <label class="form-mastery-toggle" :title="'Mastery (9th Level + Combat Form Drills): ' + form.mastery">
-                    <input type="checkbox" v-model="sheet.combatFormMastery[key]">
-                    <span class="star-icon material-symbols-outlined" :class="{ mastered: sheet.combatFormMastery[key] }">star</span>
-                  </label>
-                </div>
-              </div>
-            </template>
-          </Collapsible>
-        </NotchContainer>
+      <!-- Magi-Knight Persona portrait between the columns, as on the printable sheet -->
+      <div class="soul-armament-center">
+        <PersonaPortrait :image="sheet.knightTokenImage" label="Magi-Knight Persona" />
       </div>
 
       <div class="soul-armament-right">
@@ -544,6 +550,33 @@ watch(() => sheet.elemental_affinity, (newAffinity) => {
             </select>
           </div>
         </NotchContainer>
+      <div class="relics-section">
+        <NotchContainer>
+          <div class="relic-header-row">
+            <h4>relics</h4>
+            <span class="relic-capacity" :class="{ 'over-capacity': sheet.relicsOverCapacity }">
+              {{ sheet.relicCount }}/{{ sheet.relicCapacity }}
+            </span>
+          </div>
+          <div v-if="sheet.relicsOverCapacity" class="relic-warning">Over capacity! Max relics = Reputation Level</div>
+          <RepeatingSection name="relics">
+            <RepeatingItem v-for="item in sheet.sections.relics.rows" :key="item._id" :row="item" name="relics"
+              class="relics-item">
+              <NotchContainer notchType="none">
+              <Collapsible class="relic-content" :default="item.collapsed" @collapse="item.collapsed = !item.collapsed">
+                <template v-slot:collapsed>
+                  <span>{{ item.name }}</span>
+                </template>
+                <template v-slot:expanded>
+                  <input class="underline" type="text" v-model="item.name" placeholder=" Relic name">
+                  <textarea class="underline" v-model="item.description" placeholder=" Relic description"></textarea>
+                </template>
+              </Collapsible>
+              </NotchContainer>
+            </RepeatingItem>
+          </RepeatingSection>
+        </NotchContainer>
+      </div>
 
       </div>
     </div>
@@ -653,33 +686,6 @@ watch(() => sheet.elemental_affinity, (newAffinity) => {
       <SpellSection/>
     </div>
   </NotchContainer>
-  </div>
-  <div class="relics-section">
-    <NotchContainer>
-      <div class="relic-header-row">
-        <h4>relics</h4>
-        <span class="relic-capacity" :class="{ 'over-capacity': sheet.relicsOverCapacity }">
-          {{ sheet.relicCount }}/{{ sheet.relicCapacity }}
-        </span>
-      </div>
-      <div v-if="sheet.relicsOverCapacity" class="relic-warning">Over capacity! Max relics = Reputation Level</div>
-      <RepeatingSection name="relics">
-        <RepeatingItem v-for="item in sheet.sections.relics.rows" :key="item._id" :row="item" name="relics"
-          class="relics-item">
-          <NotchContainer notchType="none">
-          <Collapsible class="relic-content" :default="item.collapsed" @collapse="item.collapsed = !item.collapsed">
-            <template v-slot:collapsed>
-              <span>{{ item.name }}</span>
-            </template>
-            <template v-slot:expanded>
-              <input class="underline" type="text" v-model="item.name" placeholder=" Relic name">
-              <textarea class="underline" v-model="item.description" placeholder=" Relic description"></textarea>
-            </template>
-          </Collapsible>
-          </NotchContainer>
-        </RepeatingItem>
-      </RepeatingSection>
-    </NotchContainer>
   </div>
   </div>
 
@@ -967,6 +973,20 @@ watch(() => sheet.elemental_affinity, (newAffinity) => {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: var(--half-gap, 4px);
+
+    @container (560px < width) {
+      grid-template-columns: 1fr 0.9fr 1fr;
+    }
+  }
+
+  .soul-armament-center {
+    display: grid;
+    align-content: start;
+
+    @container (width <= 560px) {
+      grid-column: 1 / -1;
+      grid-row: 1;
+    }
   }
 
   .soul-armament-left,

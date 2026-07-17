@@ -3,92 +3,103 @@ import NotchContainer from './NotchContainer.vue';
 import { useSheetStore } from '@/stores/sheetStore';
 const sheet = useSheetStore();
 
-const backgroundItems = { 
-  player_links: 'Player Links',
-  quote: 'Quote',
-  interests: 'Interests',
-  virtues: 'Virtues',
-  strengths: 'Strengths',
-  weaknesses: 'Weaknesses',
-  electives: 'Electives & Clubs',
-  characteristics: 'characteristics',
-};
-
-const backstoryItems = {
-  backstory: 'backstory',
-};
-
+// Printable page 4 layout: Electives & Clubs | Personal Characteristics + Quote | Player Links,
+// with the Student Backstory as a tall column beside them.
+// (Interests/Virtues/Strengths/Weaknesses live on the Student page, as on the printable sheet.)
 </script>
 
 <template>
+  <div class="background-grid">
+    <NotchContainer width="thick" notch="25" class="backstory-item">
+      <h4>Student Backstory</h4>
+      <textarea class="underline" v-model="sheet.backstory" />
+    </NotchContainer>
 
-    <!-- Backstory Section -->
-    <div class="backstory flex-box flex-wrap tiny-gap">
-    <label class="flex-box flex-column" v-for="(value, key) in backstoryItems" :key="`backstory-${key}`">
-      <NotchContainer width="thick" notch="25" class="backstory-item">
-        <h4 class="capitalize">{{ value }}</h4>
-        <!-- Bind to sheet[key] instead of sheet[value] -->
-        <textarea type="text" class="underline" v-model="sheet[key]" />
-      </NotchContainer>
-    </label>
+    <NotchContainer width="thick" notch="10" class="background-item electives-item">
+      <h4>Electives &amp; Clubs</h4>
+      <textarea class="underline" v-model="sheet.electives" />
+    </NotchContainer>
+
+    <NotchContainer width="thick" notch="10" class="background-item">
+      <h4>Personal Characteristics</h4>
+      <textarea class="underline" v-model="sheet.characteristics" />
+    </NotchContainer>
+
+    <NotchContainer width="thick" notch="10" class="background-item">
+      <h4>Player Links</h4>
+      <textarea class="underline" v-model="sheet.player_links" />
+    </NotchContainer>
+
+    <NotchContainer width="thick" notch="10" class="background-item quote-item">
+      <h4>Quote</h4>
+      <textarea class="underline" v-model="sheet.quote" />
+    </NotchContainer>
   </div>
-
-  <!-- Background Items Section -->
-  <div class="backgroundItems flex-box flex-wrap tiny-gap">
-    <label class="flex-box flex-column" v-for="(value, key) in backgroundItems" :key="`background-${key}`">
-      <NotchContainer width="thick" notch="10" class="background-item">
-        <h4 class="capitalize">{{ value }}</h4>
-        <!-- Bind to sheet[key] instead of sheet[value] -->
-        <textarea type="text" class="underline" v-model="sheet[key]" />
-      </NotchContainer>
-    </label>
-  </div>
-
 </template>
 
-<style>
-
-.backgroundItems > * {
-  flex: 1;
-}
-
-.background-item{
+<style lang="scss">
+.background-grid {
   display: grid;
-  min-width: 22.4cap;
-  min-height: 10cap;
-  max-width: 22.4cap;
-  margin-top: .5cap;
-  margin-right: 0.5cap;
+  gap: var(--half-gap);
+  align-items: stretch;
+  grid-template-columns: 1.2fr 1fr 1fr;
+  grid-template-areas:
+    'backstory electives  links'
+    'backstory characteristics links'
+    'backstory quote      quote';
+
+  .backstory-item {
+    grid-area: backstory;
+  }
+
+  .electives-item {
+    grid-area: electives;
+  }
+
+  .background-item:nth-of-type(3) {
+    grid-area: characteristics;
+  }
+
+  .background-item:nth-of-type(4) {
+    grid-area: links;
+  }
+
+  .quote-item {
+    grid-area: quote;
+  }
+
+  @container (width <= 650px) {
+    grid-template-columns: 1fr 1fr;
+    grid-template-areas:
+      'backstory backstory'
+      'electives characteristics'
+      'links     quote';
+  }
 }
 
-.background-item textarea {
+.background-item,
+.backstory-item {
+  display: grid;
+  grid-template-rows: auto 1fr;
+  gap: var(--tiny-gap);
+
+  h4 {
+    text-align: center;
+    margin: 0;
+    text-transform: capitalize;
+  }
+
+  textarea {
     width: 100%;
     height: 100%;
-    min-height: 10cap;
+    min-height: 8cap;
     box-sizing: border-box;
     background-color: var(--masterBack);
     color: var(--color);
+  }
 }
 
-.backstory{
-  flex: 1;
-  margin-top: 1cap;
-  margin-right: 1cap;
+.backstory-item textarea {
+  min-height: 24cap;
 }
-
-.backstory-item{
-  display:grid;
-  min-width: 50cap;
-  min-height: 17.1cap;
-}
-
-.backstory-item, textarea {
-    width: 100%;
-    height: 100%;
-    min-height: 20cap;
-    box-sizing: border-box;
-    background-color: var(--masterBack);
-    color: var(--color);
-}
-
 </style>

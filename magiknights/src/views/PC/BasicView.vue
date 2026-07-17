@@ -15,60 +15,75 @@ const sheet = useSheetStore();
 
 <template>
   <div class="basic-view">
-    <EclipseChart />
-    <Crystal />
-    <AbilityScoreSection class="tall-section" />
-    <div class="subgrid tall-section">
+    <!-- Left column: Soul Eclipse Chart, ability circles, conditions (printable page 1 center) -->
+    <div class="basic-col">
+      <EclipseChart />
+      <AbilityScoreSection />
+      <ConditionTracker />
+    </div>
+    <!-- Right column: Crystalline Fracturing, Techniques & Tactics, Shards, Level Abilities -->
+    <div class="basic-col">
+      <Crystal />
       <TechniquesTactics />
       <PowerShards />
-    </div>
-    <!-- Conditions section (moved from PCView sidebar) -->
-    <ConditionTracker />
-    <!-- Level Abilities section (moved from KnightView) -->
-    <NotchContainer class="level-abilities-container" width="thick" notchType="curve">
-      <h4>Level Abilities</h4>
-      <Collapsible :default="sheet.levelAbilitiesCollapsed" @collapse="sheet.levelAbilitiesCollapsed = !sheet.levelAbilitiesCollapsed">
-        <template v-slot:expanded>
-          <div class="level-abilities-list">
-            <div
-              v-for="(ability, key) in sheet.levelAbilityData"
-              :key="key"
-              class="level-ability-item"
-              :class="{ unlocked: sheet.levelAbilities[key], locked: !sheet.levelAbilities[key] }"
-              :title="ability.description"
-            >
-              <span class="ability-level-badge">{{ ability.level }}</span>
-              <span class="ability-name">{{ ability.name }}</span>
-              <label v-if="key === 'energySurge' && sheet.levelAbilities[key]" class="ability-toggle">
-                <input type="checkbox" v-model="sheet.energySurgeUsed" />
-                <span>Used</span>
-              </label>
-              <label v-if="key === 'flight' && sheet.levelAbilities[key]" class="ability-toggle">
-                <input type="checkbox" v-model="sheet.isFlying" />
-                <span>Active</span>
-              </label>
+      <NotchContainer class="level-abilities-container" width="thick" notchType="curve">
+        <h4>Level Abilities</h4>
+        <Collapsible :default="sheet.levelAbilitiesCollapsed" @collapse="sheet.levelAbilitiesCollapsed = !sheet.levelAbilitiesCollapsed">
+          <template v-slot:expanded>
+            <div class="level-abilities-list">
+              <div
+                v-for="(ability, key) in sheet.levelAbilityData"
+                :key="key"
+                class="level-ability-item"
+                :class="{ unlocked: sheet.levelAbilities[key], locked: !sheet.levelAbilities[key] }"
+                :title="ability.description"
+              >
+                <span class="ability-level-badge">{{ ability.level }}</span>
+                <span class="ability-name">{{ ability.name }}</span>
+                <label v-if="key === 'energySurge' && sheet.levelAbilities[key]" class="ability-toggle">
+                  <input type="checkbox" v-model="sheet.energySurgeUsed" />
+                  <span>Used</span>
+                </label>
+                <label v-if="key === 'flight' && sheet.levelAbilities[key]" class="ability-toggle">
+                  <input type="checkbox" v-model="sheet.isFlying" />
+                  <span>Active</span>
+                </label>
+              </div>
             </div>
-          </div>
-        </template>
-        <template v-slot:collapsed>
-          <span class="level-abilities-summary">Level Abilities ({{ Object.values(sheet.levelAbilities).filter(v => v).length }}/{{ Object.keys(sheet.levelAbilityData).length }} unlocked)</span>
-        </template>
-      </Collapsible>
-    </NotchContainer>
+          </template>
+          <template v-slot:collapsed>
+            <span class="level-abilities-summary">Level Abilities ({{ Object.values(sheet.levelAbilities).filter(v => v).length }}/{{ Object.keys(sheet.levelAbilityData).length }} unlocked)</span>
+          </template>
+        </Collapsible>
+      </NotchContainer>
+    </div>
   </div>
 </template>
 <style lang="scss">
 .basic-view {
   display: grid;
   gap: inherit;
-  grid-auto-flow: dense;
+  align-items: start;
 
   @container (650px < width) {
-    grid-template-columns: 1fr 1fr 1fr;
+    grid-template-columns: 1fr 1fr;
   }
 
   @container (500px < width <=650px) {
     grid-template-columns: 1fr 1fr;
+  }
+
+  .basic-col {
+    display: grid;
+    gap: var(--half-gap);
+    align-content: start;
+
+    /* size containment inside the chart needs an explicit box */
+    .eclipse-container {
+      width: 100%;
+      aspect-ratio: 1 / 1;
+      max-height: 420px;
+    }
   }
 }
 .overflow-container {
