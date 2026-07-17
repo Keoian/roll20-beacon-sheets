@@ -524,6 +524,13 @@ const importSheetData = async (event) => {
     flex-direction: column;
     gap: var(--half-gap);
 
+    /* keep Export/Import buttons on the same baseline regardless of text length */
+    .mode-switch-btn {
+      margin-top: auto;
+      text-align: center;
+      box-sizing: border-box;
+    }
+
     h4 {
       margin: 0;
     }

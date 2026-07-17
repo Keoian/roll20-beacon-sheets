@@ -22,27 +22,28 @@ defineProps({
 .persona-portrait {
   display: grid;
   grid-template-rows: auto 1fr;
-  gap: var(--tiny-gap);
+  gap: var(--half-gap);
   justify-items: center;
   align-content: start;
 
   .portrait-label-banner {
     font-weight: bold;
-    font-size: 0.9rem;
+    font-size: 0.8rem;
+    text-align: center;
     text-transform: uppercase;
-    letter-spacing: 0.08em;
+    letter-spacing: 0.05em;
     color: var(--header-blue);
-    padding: 2px 14px;
+    padding: 2px 12px;
     border: 2px solid var(--borderColor);
     border-radius: 12px;
     background: var(--masterBack);
-    z-index: 1;
+    width: fit-content;
+    max-width: 100%;
   }
 
   .portrait-frame {
     width: 100%;
     min-height: 320px;
-    margin-top: -12px;
     border: 4px solid var(--borderColor);
     /* arched window in the spirit of the printable sheet */
     border-radius: 48% 48% 10px 10px / 22% 22% 10px 10px;
