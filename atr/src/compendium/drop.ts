@@ -13,12 +13,13 @@ import { onDropSubrace } from "./dropSubrace";
 import { onDropRace } from "./dropRace";
 import { onDropBackground } from "./dropBackground";
 import { onDropMonster, setToken } from "./dropMonster";
+import { onDropPositiveReaction, onDropNegativeReaction } from "./dropReaction";
 import { type Dispatch } from "@roll20-official/beacon-sdk";
 import { SpellSchema } from "@/schemas/spell";
 
 type Feature = z.infer<typeof FeatureSchema>;
 
-export type compendiumCategory = "Spells" | "Survival Gear" | "Features" | "Feats" | "Classes" | "Subclasses" | "Races" | "Subraces" | "Backgrounds" | "Artistry Maneuvers" | "Fighting Styles" | "Sharpshooting Maneuvers" | "Slip Tricks" | "Ammunition" | "Armor" | "Firearms and Explosives" | "Boost Enhancements" | "Optional Background Features" | "Otherwordly Traits" | "Racial Templates" | "Clothing" | "Animals and Gear" | "Drugs" | "Tools" | "Vehicles" | "Monsters" | "Armor Modifications" | "Firearm Modifications" | "Firearm Accessories"| "Melee and Missile Modifications" | "Melee and Missile Weapons" | "Vehicle Modifications" | "Miscellaneous Magic Items" |"Brews" | "Magic Weapons" | "Magic Armor"| "Wondrous Items" | "Mutations";
+export type compendiumCategory = "Core Personality Traits" | "Spells" | "Survival Gear" | "Features" | "Feats" | "Classes" | "Subclasses" | "Ancestries" | "Backgrounds" | "Artistry Maneuvers" | "Fighting Styles" | "Sharpshooting Maneuvers" | "Slip Tricks" | "Ammunition" | "Armor" | "Firearms and Explosives" | "Boost Enhancements" | "Optional Background Features" | "Otherwordly Traits" | "Racial Templates" | "Clothing" | "Animals and Gear" | "Drugs" | "Tools" | "Vehicles" | "Monsters" | "Armor Modifications" | "Firearm Modifications" | "Firearm Accessories" | "Melee and Missile Modifications" | "Melee and Missile Weapons" | "Vehicle Modifications" | "Miscellaneous Magic Items" | "Brews" | "Magic Weapons" | "Magic Armor" | "Wondrous Items" | "Mutations" | "Progeny - Sin Nature" | "Descended - Angelic Banner Origin" | "NPC Classes" | "Positive Reactions" | "Negative Reactions";
 
 export type CompendiumPage = {
   id: string;
@@ -86,13 +87,13 @@ export type DropContext = {
 
 export const dropHandlers: Record<compendiumCategory, (ctx: DropContext) => void> = {
   "Spells": onDropSpell,
+  "Core Personality Traits": onDropFeature,
   "Survival Gear": onDropEquipment,
   "Features": onDropFeature,
   "Feats": onDropFeature,
   "Classes": onDropClass,
   "Subclasses": onDropSubclass,
-  "Races": onDropRace,
-  "Subraces": onDropSubrace,
+  "Ancestries": onDropRace,
   "Backgrounds": onDropBackground,
   "Artistry Maneuvers": onDropFeature,
   "Fighting Styles": onDropFeature,
@@ -122,17 +123,21 @@ export const dropHandlers: Record<compendiumCategory, (ctx: DropContext) => void
   "Magic Armor": onDropEquipment,
   "Wondrous Items": onDropEquipment,
   "Mutations": onDropFeature,
-  "Melee and Missile Weapons": onDropEquipment
+  "Melee and Missile Weapons": onDropEquipment,
+  "Progeny - Sin Nature": onDropSubrace,
+  "Descended - Angelic Banner Origin": onDropSubrace,
+  "NPC Classes": onDropClass,
+  "Positive Reactions": onDropPositiveReaction,
+  "Negative Reactions": onDropNegativeReaction,
 
 };
 
 export const drag = async ({ dropData }: DropArgs, dispatch?: Dispatch, isNewSheet = false, character?: Character) => {
   const { pageName, expansionId } = dropData;
-  const  category = dropData.categoryName as compendiumCategory | string;
+  const category = dropData.categoryName as compendiumCategory | string;
   const request = createPageRequest(category, pageName);
-  
   const actualDispatch = dispatch ?? dispatchRef.value;
-  const response:CompendiumResults = await actualDispatch.compendiumRequest({ query: request })
+  const response: CompendiumResults = await actualDispatch.compendiumRequest({ query: request })
 
   if (response.errors)
     throw new Error("Expected a compendium request, but instead got an error.");
@@ -147,7 +152,7 @@ export const drag = async ({ dropData }: DropArgs, dispatch?: Dispatch, isNewShe
   const page = pages[correctPageIndex];
   console.log("Dropping page", page);
   if (dropHandlers.hasOwnProperty(category)) {
-    if(page.properties.hasOwnProperty('data-payload')) {
+    if (page.properties.hasOwnProperty('data-payload')) {
       try {
         console.log(page.properties);
 
@@ -181,9 +186,9 @@ export const drag = async ({ dropData }: DropArgs, dispatch?: Dispatch, isNewShe
         }
 
         const dropHandler = dropHandlers[category as compendiumCategory];
-        await dropHandler({payload, effects, tags, features, spells, expansionId, isNewSheet, dispatch: actualDispatch, character }); 
+        await dropHandler({ payload, effects, tags, features, spells, expansionId, isNewSheet, dispatch: actualDispatch, character });
 
-        if(isNewSheet) {
+        if (isNewSheet && category === 'Monsters') {
           await new Promise(resolve => setTimeout(resolve, 2000)); // 500ms delay
           setToken({ characterId: character!.id, payload, dispatch: actualDispatch });
         }
