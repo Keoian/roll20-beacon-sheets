@@ -4,11 +4,11 @@
   "description": "Roll20 Compendium for Magi-Knights Awakening with Beacon sheet attributes",
   "categories": {
     "Rules": {
-      "pageCount": 141,
+      "pageCount": 146,
       "file": "rules.json"
     },
     "Spells": {
-      "pageCount": 18,
+      "pageCount": 19,
       "file": "spells.json"
     },
     "Techniques": {
@@ -16,7 +16,7 @@
       "file": "techniques.json"
     },
     "Equipment": {
-      "pageCount": 26,
+      "pageCount": 43,
       "file": "equipment.json"
     },
     "Relics": {
@@ -28,7 +28,7 @@
       "file": "shards.json"
     },
     "Monsters": {
-      "pageCount": 43,
+      "pageCount": 59,
       "file": "monsters.json"
     },
     "Locations": {
@@ -36,7 +36,7 @@
       "file": "locations.json"
     },
     "Classes": {
-      "pageCount": 29,
+      "pageCount": 30,
       "file": "classes.json"
     },
     "Lists": {
@@ -44,5 +44,5 @@
       "file": "lists.json"
     }
   },
-  "totalPages": 342
+  "totalPages": 382
 }
