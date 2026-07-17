@@ -266,18 +266,28 @@ const strengthMod = computed(() => {
 
 ### Combat Systems
 
-**Conditions Tracking (25+ conditions):**
+**Conditions Tracking (20 compendium conditions):**
 ```javascript
 conditions: ref({
-  distressed: false,    // -1 to checks
-  horrified: false,     // Mental
-  berserk: false,
-  bleeding: false,      // Physical
-  burning: false,
-  exposed: false,
-  // ... etc
+  // Mental: distressed, horrified, berserk
+  // Physical: bleeding, burning, disoriented, exposed, paralyzed,
+  //           prone, restrained, unconscious
+  // Depletion: depleted, drained, poisoned, silenced,
+  //            soulSiphoned1-4, soulTainted
 })
 ```
+Conditions that impose Disadvantage are wired into context-aware roll modes:
+`rollModeForContext('attack')` (Depleted, Drained, Distressed, Disoriented,
+Poisoned) and `rollModeForContext('check')` (Distressed, Disoriented,
+Horrified). There is no flat numeric penalty from conditions.
+
+**Attrition (Endurance Die):**
+Stress penalizes INT/WIS/CHA rolls and Exhaustion penalizes STR/DEX/CON rolls
+by their level. `rollEnduranceDie()` rolls 1d6 with each ability/skill roll and
+negates the penalty when the die meets or exceeds the level; at level 6 the
+related rolls also take Disadvantage which cannot be negated. Corruption (3+ =
+Heartless Knight, 5+ = Fallen Knight) and Burnout Lines are computed from
+`eclipse_blips` states (0 empty / 1 Trauma / 2 Corruption / 3 Burnout).
 
 **Squadron Formations:**
 - Arrow (Attack), Victory (Defense), Barrage (Destruction), Diamond (Restoration)
@@ -291,22 +301,45 @@ conditions: ref({
 
 ### Equipment System
 
-**Soul Weapon Qualities:**
-```javascript
-soul_weapon: {
-  qualities: ref({
-    accurate: false,      // +1 attack
-    coupled: false,       // Dual-wield
-    finesse: false,       // DEX for attack/damage
-    massive: false,       // -2 attack, +4 damage
-    veilPiercing: false,  // Crit on 16+
-    vicious: false        // Max crit dice
-    // ... etc
-  })
-}
-```
+**Soul Weapon Qualities** (per compendium — no persistent bonuses):
+- Trade-off, chosen before each roll: Accurate (-2 dmg/+1 Atk or -4/+2),
+  Massive (-1 Atk/+2 dmg or -2/+4)
+- Triggered on an Attack Roll of 16+: Forceful (+1d6), Ensnaring (Restrained),
+  Staggering Blow (10ft knockback)
+- Special: Coupled, Two-Handed, Veil-Piercing (1/encounter auto-hit, tracked by
+  `veilPiercingUsed`), Vicious (max duplicated dice on crit), Finesse
+- There is no critical-range mechanic.
 
-**Soul Gun** and **Magical Implement** follow similar patterns with unique qualities.
+**Soul Gun (Firing Pool system, requires Combat Form X: Regulation):**
+- 7 gun types (`gunTypeData`): HDG/SMG/ASR/DMR/STG/LMG/SDA with E-Range,
+  damage die, and ROF (Rapid Fire / Mag Dump d8 counts)
+- Gun Styles (`gunStyleData`) for HDG (Akimbo, Aegis/Musketeer, Fast Reload)
+  and SMG (Mobile, Hail of Bullets)
+- `rollGunAttack('rf'|'md')` rolls the Firing Pool (Nd8 + DEX + Prof vs Armor),
+  counts 8s as Direct Hits (+Proficiency damage each), consumes Aiming, and
+  flags Reload after a Mag Dump
+- Attachments tracked in the `gunAttachments` repeating section;
+  `firingPoolBonus` holds flat pool modifiers
+
+**Magical Implement Qualities** (per compendium): Card Conductor, Embolden
+(+Level spell damage), Light, Mana Attunement (MP = MCO × 3), Mana Conduit
+(1/Sleep Phase, tracked by `manaConduitUsed`), Radiance (+1+Level healing),
+Two-Handed, Warding (reduce spell damage by ½ Level, min 1). Computed effects:
+`emboldenDamageBonus`, `radianceHealBonus`, `wardingReduction`.
+
+**Combat Forms I-X:** `combatFormData` holds the ten forms (Adaptation,
+Deflection, Vindication, Purgation, Refraction, Reflection, Vibration,
+Constellation, Cessation, Regulation) with known (`combatFormsKnown`) and
+mastery (`combatFormMastery`, requires level 9 + Combat Form Drills) tracking
+and an `activeCombatForm` selector. `hasFormX` gates Soul Gun use.
+
+**Magi-Squire:** `squire` ref with 6 Health Blips / 3 Mana Blips, fighting
+style (melee +2 Knight Armor / ranged 60ft), damage scaling (1d6+3, 2d6@5,
+3d6@10, 4d6@15 via `squireDamage`), and spell paths restricted to
+Beam/Explosion/Curing/Restoration.
+
+**Relics:** capacity equals Reputation Level (`relicCapacity`,
+`relicsOverCapacity`).
 
 ### NPC/Monster System
 
@@ -316,6 +349,14 @@ soul_weapon: {
 - **Adversary** - Standard enemy
 - **Nemesis** - Boss tier
 - **Harbinger** - Major threat
+
+**Creature types:** Outsider and Mortal only. **Sizes:** Small, Medium, Large,
+Huge, Massive, Colossal with Armor/HP%/Attack/DPR% modifiers per Table 15-6
+(`sizeModifiers`). **Roles** (`npc_role` + `roleModifiers`): Assassin, Brute,
+Defender, Heavy, Lithe, Merciless, Savage, Skirmisher, Striker, Tank, Vanguard,
+Watcher — each adjusts Armor/HP/Attack/DPR. `npc_combined_modifiers` sums role
+and size adjustments; `rankDamagePct` records rank damage percentages
+(Vassal 50 / Adversary 55 / Nemesis 60 / Harbinger 70).
 
 ```javascript
 // Horde scaling

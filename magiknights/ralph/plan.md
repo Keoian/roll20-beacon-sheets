@@ -22,7 +22,7 @@ Tasks to remove incorrect/unnecessary features and implement missing ones. Each 
       "Update ARCHITECTURAL_ANALYSIS.md to reflect the corrected condition list"
     ],
     "context": "The ConditionTracker.vue has 4 categories (mental, physical, depletion, other). The `other` category contains 7 D&D 5e conditions (blinded, charmed, frightened, incapacitated, invisible, poisoned, stunned) that don't exist in Magi-Knights. The compendium defines 17+ conditions: Berserk, Bleeding, Burning, Depleted, Disoriented, Distressed, Drained, Exposed, Horrified, Paralyzed, Poisoned, Prone, Restrained, Silenced, Soul-Siphoned I-IV, Soul-Tainted, Unconscious. The sheet is missing Disoriented, Unconscious, and Soul-Siphoned IV.",
-    "passes": false
+    "passes": true
   },
   {
     "id": 2,
@@ -41,7 +41,7 @@ Tasks to remove incorrect/unnecessary features and implement missing ones. Each 
       "Update ARCHITECTURAL_ANALYSIS.md condition section if it lists condition effects"
     ],
     "context": "Multiple condition descriptions in ConditionTracker.vue are simplified or incorrect compared to the compendium. The compendium defines precise mechanical effects for each condition. Key corrections: Bleeding uses (N)-CON formula not flat -2, Burning has per-Action AND start-of-turn damage, Depleted/Drained set Move to 0 and have specific spell restrictions, Berserk forces attacks and doubles STR (not advantage on attacks), Soul-Tainted only affects rolls vs Invading Evil.",
-    "passes": false
+    "passes": true
   },
   {
     "id": 3,
@@ -58,7 +58,7 @@ Tasks to remove incorrect/unnecessary features and implement missing ones. Each 
       "Update ARCHITECTURAL_ANALYSIS.md to document the corrected condition mechanics"
     ],
     "context": "In sheetStore.js, the `conditionDisadvantageOnAttacks` computed references non-existent conditions (blinded, frightened) and incorrect conditions (prone gives advantage to attackers within 15ft, not disadvantage to the prone creature's attacks; restrained doesn't cause attack disadvantage). Per the compendium, conditions that cause Disadvantage on YOUR attacks: Depleted ('Attacks made with Disadvantage'), Drained ('Attacks made with Disadvantage'), Distressed ('Disadvantage on Skill Checks and Attack Actions'), Disoriented ('Disadvantage on Attacks'). The `distressedPenalty` applies a flat -1 which is wrong - it should be Disadvantage.",
-    "passes": false
+    "passes": true
   },
   {
     "id": 4,
@@ -80,7 +80,7 @@ Tasks to remove incorrect/unnecessary features and implement missing ones. Each 
       "Update ARCHITECTURAL_ANALYSIS.md weapon quality section"
     ],
     "context": "The weapon quality system in sheetStore.js has incorrect effects. Per the compendium: Accurate = trade-off choice per roll (-2 damage for +1 attack OR -4 for +2), Forceful = triggered on 16+ (add 1d6), Massive = trade-off choice (-1 atk/+2 dmg OR -2/+4), Veil-Piercing = 1/Combat auto-hit (not crit range), Ensnaring = 16+ triggers Restrained, Staggering Blow = 16+ triggers knockback. The sheet currently applies flat bonuses which is wrong - Accurate/Massive are per-roll choices that players make before rolling. The weaponCritRange computed (crit on 16+) is entirely fabricated.",
-    "passes": false
+    "passes": true
   },
   {
     "id": 5,
@@ -100,7 +100,7 @@ Tasks to remove incorrect/unnecessary features and implement missing ones. Each 
       "Update ARCHITECTURAL_ANALYSIS.md Soul Gun section"
     ],
     "context": "The entire gun quality system is fabricated. Soul Guns in Magi-Knights use a completely different mechanic: a Firing Pool system where you roll multiple d8s (RF for rapid fire, MD for mag dump) + DEX + Proficiency vs Armor. Each '8' rolled is a Direct Hit (+Prof damage). The 7 gun types have different E-Range, damage, and ROF values. HDG and SMG have Gun Style choices. All guns can have Attachments (Scopes, Magazines, Rail/Underbarrel, Muzzles) that modify the Firing Pool. The sheet should track: gun type, style (if applicable), attachments, and firing pool state (aimed, reloaded).",
-    "passes": false
+    "passes": true
   },
   {
     "id": 6,
@@ -122,7 +122,7 @@ Tasks to remove incorrect/unnecessary features and implement missing ones. Each 
       "Update ARCHITECTURAL_ANALYSIS.md implement section"
     ],
     "context": "The compendium defines 7 implement qualities (8 counting Two-Handed): Card Conductor (required for Divination/Release Magic), Embolden (+MK Level spell damage), Light (one-hand, no weapon limit), Mana Attunement (MP x3), Mana Conduit (1/Sleep -1 Tier cost), Radiance (+1+Level healing), Two-Handed, Warding (reduce spell damage by 1/2 Level). The 4 implements are: Witch's Force Wand (1d4, Mana Attunement+Mana Conduit+Radiance+Warding), Wizard's Magic Staff (1d6, Embolden+Mana Attunement+Mana Conduit+Two-Handed+Warding), Master's Instrument (1d4, Embolden+Mana Attunement+Mana Conduit+Radiance+Two-Handed), Collector's Spell Deck (no damage, Card Conductor+Light).",
-    "passes": false
+    "passes": true
   },
   {
     "id": 7,
@@ -144,7 +144,7 @@ Tasks to remove incorrect/unnecessary features and implement missing ones. Each 
       "Update ARCHITECTURAL_ANALYSIS.md NPC section"
     ],
     "context": "The NPC view has incorrect creature types (Construct/Undead/Beast/Aberration don't exist - only Outsider and Mortal), incorrect sizes (Tiny/Gargantuan don't exist - correct sizes are Small/Medium/Large/Huge/Massive/Colossal), and is missing the Role system entirely. Roles modify NPC stats: each role has AC, HP%, Atk Bonus, and DPR% adjustments. Sizes also have stat modifications. Ranks (Vassal/Adversary/Nemesis/Harbinger) have damage percentage values (50/55/60/70).",
-    "passes": false
+    "passes": true
   },
   {
     "id": 8,
@@ -157,7 +157,7 @@ Tasks to remove incorrect/unnecessary features and implement missing ones. Each 
       "Update ARCHITECTURAL_ANALYSIS.md component list if it references these files"
     ],
     "context": "BurstDisplay.vue and DiamondDisplay.vue are empty stub files with no template, script, or style content. They are not imported or used anywhere in the application. They should be removed to keep the codebase clean.",
-    "passes": false
+    "passes": true
   },
   {
     "id": 9,
@@ -177,7 +177,7 @@ Tasks to remove incorrect/unnecessary features and implement missing ones. Each 
       "Update ARCHITECTURAL_ANALYSIS.md attrition section"
     ],
     "context": "The compendium defines the Endurance Die system: roll 1d6 with d20 when affected by Stress (mental rolls) or Exhaustion (physical rolls). If d6 >= current level, negate the penalty. Level 6 Disadvantage cannot be negated. Freaking Out occurs at 6 Stress + Oppressive Stress same day. Heartless Knight (3+ Corruption): -1 SP gained, no Catharsis, lose Comforting Comrade. Fallen Knight (5+ Corruption): 1/2 Trauma received, Refreshing->Average Sleep, Horrified->Distressed immediately, Risk of Relapse (double Corruption gained permanently). The eclipse_blips array uses states: 0=empty, 1=Trauma, 2=Corruption, 3=Burnout.",
-    "passes": false
+    "passes": true
   },
   {
     "id": 10,
@@ -195,7 +195,7 @@ Tasks to remove incorrect/unnecessary features and implement missing ones. Each 
       "Update ARCHITECTURAL_ANALYSIS.md combat forms section"
     ],
     "context": "The compendium defines 10 Combat Forms (I-X) that Magi-Knights learn as they level up. Each form provides specific combat bonuses and can be Mastered for enhanced effects. Form X: Regulation is specifically required for Soul Gun access. The current sheet has a generic repeating section for forms but no structured selection, mastery tracking, or mechanical integration. Combat Forms are a core character sheet feature that players actively choose and switch between.",
-    "passes": false
+    "passes": true
   },
   {
     "id": 11,
@@ -209,7 +209,7 @@ Tasks to remove incorrect/unnecessary features and implement missing ones. Each 
       "Update ARCHITECTURAL_ANALYSIS.md progression section"
     ],
     "context": "The compendium defines special abilities that unlock at specific levels: Counter Blast (5th+), Perfect Parry (6th+), Extricate Aether (6th+), Heroic Resolve (9th+), Knight's Insight (9th+), Knight's Resolution (9th+). These are distinct from Battle Techniques and Combat Tactics - they are permanent abilities that all Magi-Knights gain at the specified levels. The sheet should display which are unlocked based on the character's current level.",
-    "passes": false
+    "passes": true
   },
   {
     "id": 12,
@@ -227,7 +227,7 @@ Tasks to remove incorrect/unnecessary features and implement missing ones. Each 
       "Update ARCHITECTURAL_ANALYSIS.md with sleep and daily limits sections"
     ],
     "context": "The compendium defines three Sleep Phase effects that affect recovery: Average (reduce Stress and Exhaustion by 1), Feverish Dreams (no recovery, caused by trauma/relics), Refreshing Sleep (reduce by 2, full HP, -1 Fracture). Several abilities have daily or per-session limits that should be tracked: Crystalline Seal Implantation (1/day given AND 1/day received), Medical Triage (1/Sleep Phase per target), Soul Sacrifice (Rep Level times per career), Mana Conduit (1/Sleep Phase).",
-    "passes": false
+    "passes": true
   },
   {
     "id": 13,
@@ -243,7 +243,7 @@ Tasks to remove incorrect/unnecessary features and implement missing ones. Each 
       "Update ARCHITECTURAL_ANALYSIS.md social section"
     ],
     "context": "The compendium defines a Heart Stage progression system for NPC relationships: Threatening -> Hostile -> Cold -> Neutral -> Warm -> Friendly -> Sympathetic. Each stage represents how an NPC feels toward the character and affects what social actions are available. The current social section tracks Social Points and Bond Abilities but not the Heart Stage. This is a key character sheet feature for tracking NPC relationship progression.",
-    "passes": false
+    "passes": true
   },
   {
     "id": 14,
@@ -259,7 +259,7 @@ Tasks to remove incorrect/unnecessary features and implement missing ones. Each 
       "Update ARCHITECTURAL_ANALYSIS.md resist section"
     ],
     "context": "The compendium defines 4 types of Rolls to Resist: Physical (STR/DEX/CON based), Magic (INT/WIS/CHA based), Horror (special d100 roll), Purity (moral/corruption checks). Various conditions and effects grant Advantage or Disadvantage on specific resist types. For example, Disoriented gives Disadvantage on Physical Resists, Horrified affects Horror resist checks. The current sheet has basic resist roll support but no per-type advantage/disadvantage tracking.",
-    "passes": false
+    "passes": true
   },
   {
     "id": 15,
@@ -276,7 +276,7 @@ Tasks to remove incorrect/unnecessary features and implement missing ones. Each 
       "Update ARCHITECTURAL_ANALYSIS.md with Magi-Squire section"
     ],
     "context": "The compendium defines a Magi-Squire companion system: NPC companions with 6 Health Blips (no Crystalline Fractures), 3 Mana Blips (fixed), Armor 13 (Student)/15 (Knight, +2 vs melee), damage scaling from 1d6+3 to 4d6 at level 15. Squires have access to only 2 spell paths (from Beam, Explosion, Curing, Restoration), have a Paired Attack (Immediate Action), and provide +2 assist on Squire Skills. Their level syncs with their mentor. The current sheet only has a basic Herald name/bond level - no squire mechanics.",
-    "passes": false
+    "passes": true
   },
   {
     "id": 16,
@@ -293,7 +293,7 @@ Tasks to remove incorrect/unnecessary features and implement missing ones. Each 
       "Update ARCHITECTURAL_ANALYSIS.md relics section"
     ],
     "context": "The compendium states that Magi-Knights can carry a maximum number of Relics equal to their Reputation Level (0-V, so 0-5 relics). The current sheet has a generic repeating section for relics with no capacity enforcement. Adding a simple capacity display and warning keeps players aware of their limit.",
-    "passes": false
+    "passes": true
   },
   {
     "id": 17,
@@ -312,7 +312,7 @@ Tasks to remove incorrect/unnecessary features and implement missing ones. Each 
       "Commit all changes with message: 'Fix incorrect features and implement missing mechanics per compendium'"
     ],
     "context": "This is the final verification step. The build must succeed, all old references must be cleaned up, and all new state must be properly serialized. The ARCHITECTURAL_ANALYSIS.md should reflect the current state of the sheet after all corrections.",
-    "passes": false
+    "passes": true
   }
 ]
 ```
