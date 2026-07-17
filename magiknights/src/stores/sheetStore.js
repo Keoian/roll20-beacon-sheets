@@ -54,19 +54,29 @@ export const useSheetStore = defineStore('sheet',() => {
     return rollMode.value;
   });
 
+  // Stress affects mental rolls (INT/WIS/CHA); Exhaustion affects physical rolls (STR/DEX/CON)
+  const MENTAL_ABILITIES = ['intelligence', 'wisdom', 'charisma'];
+
   // Roll mode for a specific roll context; conditions can force Disadvantage on
   // attacks (Depleted, Drained, Distressed, Disoriented, Poisoned) or on skill
   // checks (Distressed, Disoriented, Horrified) per the compendium.
-  const rollModeForContext = (context) => {
-    if (forcedDisadvantage.value) return 'disadvantage';
+  // When an ability name is given, the level-6 Stress/Exhaustion Disadvantage
+  // only applies to the matching roll type (mental vs physical).
+  const rollModeForContext = (context, abilityName) => {
+    if (abilityName) {
+      const isMental = MENTAL_ABILITIES.includes(abilityName);
+      if (isMental && stress.value >= 6) return 'disadvantage';
+      if (!isMental && exhaustion.value >= 6) return 'disadvantage';
+    } else if (forcedDisadvantage.value) {
+      return 'disadvantage';
+    }
     if (context === 'attack' && conditionDisadvantageOnAttacks.value) return 'disadvantage';
     if (context === 'check' && conditionDisadvantageOnChecks.value) return 'disadvantage';
     return rollMode.value;
   };
 
-  // Get the dice expression based on roll mode
-  const getRollDice = (context) => {
-    switch (context ? rollModeForContext(context) : effectiveRollMode.value) {
+  const diceForMode = (mode) => {
+    switch (mode) {
       case 'advantage':
         return { formula: '2d20kh1', display: '2d20kh' };
       case 'disadvantage':
@@ -74,6 +84,29 @@ export const useSheetStore = defineStore('sheet',() => {
       default:
         return { formula: '1d20', display: '1d20' };
     }
+  };
+
+  // Get the dice expression based on roll mode
+  const getRollDice = (context) => {
+    return diceForMode(context ? rollModeForContext(context) : effectiveRollMode.value);
+  };
+
+  // Endurance Die (1d6): rolled alongside the d20 when Stress (mental) or
+  // Exhaustion (physical) is above 0. If the d6 meets or exceeds the current
+  // level, the penalty is negated. Returns the components/keyValues to attach.
+  const rollEnduranceDie = async (abilityName) => {
+    const isMental = MENTAL_ABILITIES.includes(abilityName);
+    const attrition = isMental ? (Number(stress.value) || 0) : (Number(exhaustion.value) || 0);
+    if (!enduranceDieEnabled.value || attrition <= 0) return null;
+    const { total: edTotal } = await getRollResults([
+      { label: 'Endurance Die', formula: '1d6' }
+    ]);
+    const negated = edTotal >= attrition;
+    return {
+      label: isMental ? 'Stress' : 'Exhaustion',
+      penalty: negated ? 0 : -attrition,
+      note: `${edTotal} vs ${attrition} ${isMental ? 'Stress' : 'Exhaustion'}: penalty ${negated ? 'negated' : 'applied'}`
+    };
   };
 
   // Conditions tracking
@@ -416,13 +449,137 @@ export const useSheetStore = defineStore('sheet',() => {
   const trauma = computed(() => eclipse_blips.value.filter(blip => blip === 1).length);
 
   const eclipse_phase = computed(() => {
-    const text = Math.max(0,...eclipse.value) >= 3 
-      ? 'Heartless Knight' 
+    const text = Math.max(0,...eclipse.value) >= 3
+      ? 'Heartless Knight'
       : 'Soul Eclipse\nChart';
-    
+
     return text.replace(/\n/g, '<br>');
   });
-  
+
+  // ==================== ATTRITION MECHANICS ====================
+  // Endurance Die (1d6): rolled alongside the d20 when affected by Stress
+  // (INT/WIS/CHA rolls) or Exhaustion (STR/DEX/CON rolls). If the d6 result is
+  // >= the current level, the penalty is negated. The Disadvantage at level 6
+  // cannot be negated by the Endurance Die.
+  const enduranceDieEnabled = ref(true);
+
+  // Whether Oppressive Stress occurred today (6 Stress + overflow = Freaking Out)
+  const freakingOutToday = ref(false);
+
+  // Eclipse blip states: 0=empty, 1=Trauma, 2=Corruption, 3=Burnout
+  const corruptionCount = computed(() => eclipse_blips.value.filter(blip => blip === 2).length);
+  const burnoutLines = computed(() => eclipse_blips.value.filter(blip => blip === 3).length);
+  // Heartless Knight (3+ Corruption): -1 SP gained, no Catharsis, lose Comforting Comrade
+  const heartlessKnight = computed(() => corruptionCount.value >= 3);
+  // Fallen Knight (5+ Corruption): 1/2 Trauma received, Refreshing->Average Sleep,
+  // Horrified->Distressed immediately, Risk of Relapse
+  const fallenKnight = computed(() => corruptionCount.value >= 5);
+
+  // ==================== SLEEP PHASE & DAILY LIMITS ====================
+  const sleepEffect = ref('average');
+  const sleepEffectData = {
+    average: { name: 'Average Sleep', note: 'Reduce Stress and Exhaustion by 1' },
+    feverish: { name: 'Feverish Dreams', note: 'Nightmares - no recovery' },
+    refreshing: { name: 'Refreshing Sleep', note: 'Reduce Stress and Exhaustion by 2, full HP, repair 1 Crystalline Fracture' }
+  };
+
+  // Crystalline Seal Implantation: 1/day given AND 1/day received
+  const sealImplantGiven = ref(false);
+  const sealImplantReceived = ref(false);
+  // Soul Sacrifice: usable Reputation Level times per career
+  const soulSacrificeCount = ref(0);
+  const soulSacrificeMax = computed(() => reputation.value);
+
+  // ==================== COMBAT FORMS ====================
+  const combatFormData = {
+    formI: { numeral: 'I', name: 'Adaptation', description: '+1 Weapon Attack OR +1 Attack for Summons', mastery: '+2 Attack (instead of +1)' },
+    formII: { numeral: 'II', name: 'Deflection', description: '+1 Armor OR +1 Armor for Summons', mastery: '+2 Armor (instead of +1)' },
+    formIII: { numeral: 'III', name: 'Vindication', description: 'One-handed weapon only: +2 damage per Reputation Level (min 1)', mastery: '+4 damage + Vicious Quality' },
+    formIV: { numeral: 'IV', name: 'Purgation', description: 'Two-Handed Melee: Bonus Action, STR/DEX Mod x Rep Level to each Horde/Swarm part', mastery: 'Add Proficiency Modifier to damage' },
+    formV: { numeral: 'V', name: 'Refraction', description: 'Reaction: Reduce ally damage by Xd6 (X=Rep Level), take damage instead', mastery: 'Reduce by Xd8 instead' },
+    formVI: { numeral: 'VI', name: 'Reflection', description: 'Shield: Reaction, impose Disadvantage on attack vs adjacent ally; become target if hit', mastery: 'Range increased to 10 feet' },
+    formVII: { numeral: 'VII', name: 'Vibration', description: 'Coupled weapon: Free Action follow-up Primary Attack if both weapons hit same target', mastery: '+2 damage to both weapons + Vicious Quality' },
+    formVIII: { numeral: 'VIII', name: 'Constellation', description: 'Bonus Action: +1 Spell DC, +1 Spell Attack, OR +2x Rep Level healing/damage', mastery: 'Full-Round cast: +3 versions of each effect' },
+    formIX: { numeral: 'IX', name: 'Cessation', description: '15ft+ weapon, ally adjacent to target: Bonus Action, +1 Attack, +2 damage, OR ally moves 10ft', mastery: 'Full-Round: +3 Attack, +6 Damage, OR ally moves 30ft' },
+    formX: { numeral: 'X', name: 'Regulation', description: 'Enables Soul Gun use', mastery: 'Each successful Open Fire deals +Rep Level damage' }
+  };
+  const activeCombatForm = ref('');
+  const combatFormsKnown = ref({
+    formI: false, formII: false, formIII: false, formIV: false, formV: false,
+    formVI: false, formVII: false, formVIII: false, formIX: false, formX: false
+  });
+  // Mastery requires 9th Level and the Combat Form Drills Tactic
+  const combatFormMastery = ref({
+    formI: false, formII: false, formIII: false, formIV: false, formV: false,
+    formVI: false, formVII: false, formVIII: false, formIX: false, formX: false
+  });
+  // Form X: Regulation is required to wield Soul Guns
+  const hasFormX = computed(() => combatFormsKnown.value.formX);
+
+  // ==================== LEVEL-LOCKED ABILITIES ====================
+  const levelAbilityData = {
+    counterBlast: { name: 'Counter Blast', level: 5, description: 'Reaction, 1/Turn: Reduce Spell Attack damage by 1d12+Level+Rep' },
+    perfectParry: { name: 'Perfect Parry', level: 6, description: 'Immediate, 1/Round: Reduce Physical damage by 1d12+Level+Rep' },
+    extricateAether: { name: 'Extricate Aether', level: 6, description: '1/Round: First Weapon Attack restores 1d4+Rep MP (1d8 with Implement)' },
+    heroicResolve: { name: 'Heroic Resolve', level: 9, description: 'Immediate, 1/Sleep Phase: End one Condition (Cleanse 1)' },
+    knightsInsight: { name: 'Knight\'s Insight', level: 9, description: 'Immediate, 1/Encounter: Make missed Weapon Attack hit' },
+    knightsResolution: { name: 'Knight\'s Resolution', level: 9, description: 'Immediate, 1/Encounter: Make failed Roll to Resist succeed' }
+  };
+  const levelAbilities = computed(() => {
+    const unlocked = {};
+    Object.entries(levelAbilityData).forEach(([key, data]) => {
+      unlocked[key] = level.value >= data.level;
+    });
+    return unlocked;
+  });
+
+  // ==================== ROLLS TO RESIST ADV/DIS ====================
+  const resistModifiers = ref({
+    physical: { advantage: false, disadvantage: false },
+    magic: { advantage: false, disadvantage: false },
+    horror: { advantage: false, disadvantage: false },
+    purity: { advantage: false, disadvantage: false }
+  });
+  const activeResistModifiers = computed(() => {
+    const result = {};
+    Object.entries(resistModifiers.value).forEach(([type, mods]) => {
+      // Disoriented gives Disadvantage on Physical Resists per the compendium
+      const disadvantage = mods.disadvantage || (type === 'physical' && conditions.value.disoriented);
+      const advantage = mods.advantage;
+      result[type] = advantage === disadvantage ? 'normal' : (advantage ? 'advantage' : 'disadvantage');
+    });
+    return result;
+  });
+
+  // ==================== MAGI-SQUIRE COMPANION ====================
+  // NPC companion bound to the Herald system: 6 Health Blips, 3 Mana Blips,
+  // Armor 13 (Student) / 15 (Knight, +2 with Melee style), levels with mentor.
+  const squire = ref({
+    name: '',
+    level: 1,
+    healthBlips: [true, true, true, true, true, true],
+    manaBlips: [true, true, true],
+    fightingStyle: 'melee', // 'melee' (+2 MK Armor) or 'ranged' (60 ft)
+    spellPath1: '',
+    spellPath2: '',
+    skills: '',
+    notes: '',
+    collapsed: true
+  });
+  // Damage scales with Squire level: 1d6+3, 2d6 at L5, 3d6 at L10, 4d6 at L15
+  const squireDamage = computed(() => {
+    const lvl = Number(squire.value.level) || 1;
+    if (lvl >= 15) return '4d6';
+    if (lvl >= 10) return '3d6';
+    if (lvl >= 5) return '2d6';
+    return '1d6+3';
+  });
+
+  // ==================== RELIC CAPACITY ====================
+  // Maximum carried Relics = Reputation Level
+  const relicCapacity = computed(() => reputation.value);
+  const relicsOverCapacity = computed(() => sections.relics.rows.value.length > relicCapacity.value);
+
   
   const crystal = {
     facet1: ref(false),
@@ -920,6 +1077,46 @@ export const useSheetStore = defineStore('sheet',() => {
   const npc_type = ref('vassal');
   const npc_size = ref('Medium');
   const npc_creature_type = ref('Outsider');
+  const npc_role = ref('none');
+
+  // Role stat adjustments (Armor, HP %, Attack Bonus, DPR %)
+  const roleModifiers = {
+    none: { ac: 0, hpPct: 0, atkBonus: 0, dprPct: 0 },
+    assassin: { ac: 0, hpPct: -25, atkBonus: 3, dprPct: 0 },
+    brute: { ac: 0, hpPct: 33, atkBonus: -3, dprPct: 0 },
+    defender: { ac: 0, hpPct: 33, atkBonus: 0, dprPct: -25 },
+    heavy: { ac: -4, hpPct: 33, atkBonus: 0, dprPct: 0 },
+    lithe: { ac: 3, hpPct: -25, atkBonus: 0, dprPct: 0 },
+    merciless: { ac: 0, hpPct: 0, atkBonus: -3, dprPct: 33 },
+    savage: { ac: -4, hpPct: 0, atkBonus: 0, dprPct: 33 },
+    skirmisher: { ac: 0, hpPct: -25, atkBonus: 0, dprPct: 33 },
+    striker: { ac: -4, hpPct: 0, atkBonus: 3, dprPct: 0 },
+    tank: { ac: 3, hpPct: 0, atkBonus: -3, dprPct: 0 },
+    vanguard: { ac: 3, hpPct: 0, atkBonus: 0, dprPct: -25 },
+    watcher: { ac: 0, hpPct: 0, atkBonus: 3, dprPct: -25 }
+  };
+
+  // Size stat adjustments per Table 15-6 (Creature Size)
+  const sizeModifiers = {
+    Small: { ac: 1, hpPct: -10, atkBonus: 1, dprPct: -10 },
+    Medium: { ac: 0, hpPct: 0, atkBonus: 0, dprPct: 0 },
+    Large: { ac: -1, hpPct: 5, atkBonus: 0, dprPct: 5 },
+    Huge: { ac: -1, hpPct: 10, atkBonus: -1, dprPct: 10 },
+    Massive: { ac: -2, hpPct: 15, atkBonus: -1, dprPct: 15 },
+    Colossal: { ac: -2, hpPct: 20, atkBonus: -2, dprPct: 20 }
+  };
+
+  // Rank damage percentage of total squadron HP per turn (Vassal 50 / Adversary 55 / Nemesis 60 / Harbinger 70)
+  const rankDamagePct = { vassal: 50, adversary: 55, nemesis: 60, harbinger: 70 };
+
+  const npc_role_modifiers = computed(() => roleModifiers[npc_role.value] || roleModifiers.none);
+  const npc_size_modifiers = computed(() => sizeModifiers[npc_size.value] || sizeModifiers.Medium);
+  const npc_combined_modifiers = computed(() => ({
+    ac: npc_role_modifiers.value.ac + npc_size_modifiers.value.ac,
+    hpPct: npc_role_modifiers.value.hpPct + npc_size_modifiers.value.hpPct,
+    atkBonus: npc_role_modifiers.value.atkBonus + npc_size_modifiers.value.atkBonus,
+    dprPct: npc_role_modifiers.value.dprPct + npc_size_modifiers.value.dprPct
+  }));
   const npc_armor = ref(10);
   const npc_move = ref(30);
   const npc_invasion_level = ref(0);
@@ -1548,6 +1745,17 @@ export const useSheetStore = defineStore('sheet',() => {
       student_type: student_type.value,
       eclipse: [...eclipse.value],
       eclipse_blips: [...eclipse_blips.value],
+      enduranceDieEnabled: enduranceDieEnabled.value,
+      freakingOutToday: freakingOutToday.value,
+      sleepEffect: sleepEffect.value,
+      sealImplantGiven: sealImplantGiven.value,
+      sealImplantReceived: sealImplantReceived.value,
+      soulSacrificeCount: soulSacrificeCount.value,
+      activeCombatForm: activeCombatForm.value,
+      combatFormsKnown: { ...combatFormsKnown.value },
+      combatFormMastery: { ...combatFormMastery.value },
+      resistModifiers: JSON.parse(JSON.stringify(resistModifiers.value)),
+      squire: JSON.parse(JSON.stringify(squire.value)),
       customProficiency: customProficiency.value,
       elemental_enhancement_1: elemental_enhancement_1.value,
       elemental_enhancement_2: elemental_enhancement_2.value,
@@ -1599,6 +1807,7 @@ export const useSheetStore = defineStore('sheet',() => {
       npc_type: npc_type.value,
       npc_size: npc_size.value,
       npc_creature_type: npc_creature_type.value,
+      npc_role: npc_role.value,
       npc_armor: npc_armor.value,
       npc_move: npc_move.value,
       npc_invasion_level: npc_invasion_level.value,
@@ -1710,6 +1919,39 @@ export const useSheetStore = defineStore('sheet',() => {
     hydrateEclipseBlipsArray(eclipse_blips.value, hydrateStore.eclipse_blips);
     hydrateEclipseBlipsArray(eclipse.value, hydrateStore.eclipse);
 
+    enduranceDieEnabled.value = hydrateStore.enduranceDieEnabled ?? enduranceDieEnabled.value;
+    freakingOutToday.value = hydrateStore.freakingOutToday ?? freakingOutToday.value;
+    sleepEffect.value = hydrateStore.sleepEffect ?? sleepEffect.value;
+    sealImplantGiven.value = hydrateStore.sealImplantGiven ?? sealImplantGiven.value;
+    sealImplantReceived.value = hydrateStore.sealImplantReceived ?? sealImplantReceived.value;
+    soulSacrificeCount.value = hydrateStore.soulSacrificeCount ?? soulSacrificeCount.value;
+    activeCombatForm.value = hydrateStore.activeCombatForm ?? activeCombatForm.value;
+    if (hydrateStore.combatFormsKnown && typeof hydrateStore.combatFormsKnown === 'object') {
+      Object.keys(combatFormsKnown.value).forEach(key => {
+        combatFormsKnown.value[key] = hydrateStore.combatFormsKnown[key] ?? combatFormsKnown.value[key];
+      });
+    }
+    if (hydrateStore.combatFormMastery && typeof hydrateStore.combatFormMastery === 'object') {
+      Object.keys(combatFormMastery.value).forEach(key => {
+        combatFormMastery.value[key] = hydrateStore.combatFormMastery[key] ?? combatFormMastery.value[key];
+      });
+    }
+    if (hydrateStore.resistModifiers && typeof hydrateStore.resistModifiers === 'object') {
+      Object.keys(resistModifiers.value).forEach(type => {
+        if (hydrateStore.resistModifiers[type]) {
+          resistModifiers.value[type].advantage = hydrateStore.resistModifiers[type].advantage ?? resistModifiers.value[type].advantage;
+          resistModifiers.value[type].disadvantage = hydrateStore.resistModifiers[type].disadvantage ?? resistModifiers.value[type].disadvantage;
+        }
+      });
+    }
+    if (hydrateStore.squire && typeof hydrateStore.squire === 'object') {
+      Object.keys(squire.value).forEach(key => {
+        if (hydrateStore.squire[key] !== undefined) {
+          squire.value[key] = hydrateStore.squire[key];
+        }
+      });
+    }
+
     hydrateSkills(skills, hydrateStore.skills);
     hydrateAbilityScores(abilityScores, hydrateStore.abilityScores);
     hydrateHp(hp, hydrateStore.hp);
@@ -1731,6 +1973,7 @@ export const useSheetStore = defineStore('sheet',() => {
     npc_type.value = hydrateStore.npc_type ?? npc_type.value;
     npc_size.value = hydrateStore.npc_size ?? npc_size.value;
     npc_creature_type.value = hydrateStore.npc_creature_type ?? npc_creature_type.value;
+    npc_role.value = hydrateStore.npc_role ?? npc_role.value;
     npc_armor.value = hydrateStore.npc_armor ?? npc_armor.value;
     npc_move.value = hydrateStore.npc_move ?? npc_move.value;
     npc_invasion_level.value = hydrateStore.npc_invasion_level ?? npc_invasion_level.value;
@@ -1763,7 +2006,7 @@ export const useSheetStore = defineStore('sheet',() => {
   }
 
   const metaStore = useMetaStore();
-  const rollAbility = (name) => {
+  const rollAbility = async (name) => {
     let rollToResist = 0;
     let elementToCheck = name;
     let elementToUse = roll_resist_proficiency.value.toLowerCase();
@@ -1776,62 +2019,79 @@ export const useSheetStore = defineStore('sheet',() => {
       rollToResist = proficiency.value;
     }
 
-    const mode = rollModeForContext('check');
-    const dice = getRollDice('check');
+    const mode = rollModeForContext('check', name);
+    const dice = diceForMode(mode);
     const rollModeLabel = mode !== 'normal'
       ? ` (${mode === 'advantage' ? 'Adv' : 'Disadv'})`
       : '';
+
+    const components = [
+      {label: dice.display, formula: dice.formula, alwaysShowInBreakdown: true},
+      {label:'Mod', value:abilityScores[name].mod.value,alwaysShowInBreakdown: true},
+      {label: 'Roll to Resist',value: rollToResist,alwaysShowInBreakdown: true}
+    ];
 
     const rollObj = {
       title: toTitleCase(name),
       subtitle: `Ability Check${rollModeLabel}`,
       characterName: metaStore.name,
-      components: [
-        {label: dice.display, formula: dice.formula, alwaysShowInBreakdown: true},
-        {label:'Mod', value:abilityScores[name].mod.value,alwaysShowInBreakdown: true},
-        {label: 'Roll to Resist',value: rollToResist,alwaysShowInBreakdown: true}
-      ]
+      components,
+      keyValues: {}
     };
+
+    const endurance = await rollEnduranceDie(name);
+    if (endurance) {
+      if (endurance.penalty !== 0) {
+        components.push({label: endurance.label, value: endurance.penalty, alwaysShowInBreakdown: true});
+      }
+      rollObj.keyValues['Endurance Die'] = endurance.note;
+    }
+
     rollToChat({rollObj});
   };
 
-  const rollSkill = (name) => {
+  const rollSkill = async (name) => {
     const abilityName = skills[name].ability.value;
     const formattedTitle = toTitleCase(name.replace(/_/g, ' '));
     const skillOverrideValue = skills[name].overrideValue.value;
 
-    const mode = rollModeForContext('check');
-    const dice = getRollDice('check');
+    const mode = rollModeForContext('check', abilityName);
+    const dice = diceForMode(mode);
     const rollModeLabel = mode !== 'normal'
       ? ` (${mode === 'advantage' ? 'Adv' : 'Disadv'})`
       : '';
 
+    const rollObj = {
+      title: formattedTitle,
+      subtitle: rollModeLabel ? `Skill Check${rollModeLabel}` : undefined,
+      characterName: metaStore.name,
+      keyValues: {}
+    };
+
     if (skillOverrideValue !== '' && skillOverrideValue !== undefined){
-      const rollObj = {
-        title: formattedTitle,
-        subtitle: rollModeLabel ? `Skill Check${rollModeLabel}` : undefined,
-        characterName: metaStore.name,
-        components: [
-          {label: dice.display, formula: dice.formula, alwaysShowInBreakdown: true},
-          {label:'Skill Value Override', value:Number(skillOverrideValue) || 0,alwaysShowInBreakdown: true}
-        ]
-      };
-      rollToChat({rollObj});
+      rollObj.components = [
+        {label: dice.display, formula: dice.formula, alwaysShowInBreakdown: true},
+        {label:'Skill Value Override', value:Number(skillOverrideValue) || 0,alwaysShowInBreakdown: true}
+      ];
     }else{
-      const rollObj = {
-        title: formattedTitle,
-        subtitle: rollModeLabel ? `Skill Check${rollModeLabel}` : undefined,
-        characterName: metaStore.name,
-        components: [
-          {label: dice.display, formula: dice.formula, alwaysShowInBreakdown: true},
-          {label:'Mod', value:abilityScores[abilityName].mod.value,alwaysShowInBreakdown: true}
-        ]
-      };
+      rollObj.components = [
+        {label: dice.display, formula: dice.formula, alwaysShowInBreakdown: true},
+        {label:'Mod', value:abilityScores[abilityName].mod.value,alwaysShowInBreakdown: true}
+      ];
       if(skills[name].proficiency.value){
         rollObj.components.push({label: 'Prof',value:Number(proficiency.value),alwaysShowInBreakdown: true});
       }
-      rollToChat({rollObj});
     }
+
+    const endurance = await rollEnduranceDie(abilityName);
+    if (endurance) {
+      if (endurance.penalty !== 0) {
+        rollObj.components.push({label: endurance.label, value: endurance.penalty, alwaysShowInBreakdown: true});
+      }
+      rollObj.keyValues['Endurance Die'] = endurance.note;
+    }
+
+    rollToChat({rollObj});
   };
 
   const rollWeapon = async (item,tier) => {
@@ -2961,6 +3221,45 @@ export const useSheetStore = defineStore('sheet',() => {
     eclipse,
     eclipse_blips,
     eclipse_phase,
+
+    // Attrition mechanics
+    enduranceDieEnabled,
+    freakingOutToday,
+    corruptionCount,
+    burnoutLines,
+    heartlessKnight,
+    fallenKnight,
+
+    // Sleep Phase and daily limits
+    sleepEffect,
+    sleepEffectData,
+    sealImplantGiven,
+    sealImplantReceived,
+    soulSacrificeCount,
+    soulSacrificeMax,
+
+    // Combat Forms
+    combatFormData,
+    activeCombatForm,
+    combatFormsKnown,
+    combatFormMastery,
+    hasFormX,
+
+    // Level-locked abilities
+    levelAbilityData,
+    levelAbilities,
+
+    // Rolls to Resist adv/dis
+    resistModifiers,
+    activeResistModifiers,
+
+    // Magi-Squire
+    squire,
+    squireDamage,
+
+    // Relic capacity
+    relicCapacity,
+    relicsOverCapacity,
     studied,
     rested,
     fate,
@@ -3109,6 +3408,11 @@ export const useSheetStore = defineStore('sheet',() => {
     npc_type,
     npc_size,
     npc_creature_type,
+    npc_role,
+    npc_role_modifiers,
+    npc_size_modifiers,
+    npc_combined_modifiers,
+    rankDamagePct,
     npc_armor,
     npc_move,
     npc_invasion_level,

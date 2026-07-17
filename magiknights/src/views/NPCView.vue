@@ -17,9 +17,25 @@ const npcTypeOptions = [
   { value: 'harbinger', label: 'Harbinger' }
 ];
 
-const sizeOptions = ['Tiny', 'Small', 'Medium', 'Large', 'Huge', 'Gargantuan'];
+const sizeOptions = ['Small', 'Medium', 'Large', 'Huge', 'Massive', 'Colossal'];
 
-const creatureTypes = ['Outsider', 'Mortal', 'Construct', 'Undead', 'Beast', 'Aberration'];
+const creatureTypes = ['Outsider', 'Mortal'];
+
+const roleOptions = [
+  { value: 'none', label: 'None' },
+  { value: 'assassin', label: 'Assassin' },
+  { value: 'brute', label: 'Brute' },
+  { value: 'defender', label: 'Defender' },
+  { value: 'heavy', label: 'Heavy' },
+  { value: 'lithe', label: 'Lithe' },
+  { value: 'merciless', label: 'Merciless' },
+  { value: 'savage', label: 'Savage' },
+  { value: 'skirmisher', label: 'Skirmisher' },
+  { value: 'striker', label: 'Striker' },
+  { value: 'tank', label: 'Tank' },
+  { value: 'vanguard', label: 'Vanguard' },
+  { value: 'watcher', label: 'Watcher' }
+];
 
 const damageTypes = [
   { value: 'physical', label: 'Physical' },
@@ -60,6 +76,17 @@ const toggleUnitDefeated = (index) => {
         <select v-model="sheet.npc_creature_type">
           <option v-for="ct in creatureTypes" :key="ct" :value="ct">{{ ct }}</option>
         </select>
+        <select v-model="sheet.npc_role" :title="'Role adjusts Armor, HP, Attack, and DPR'">
+          <option v-for="role in roleOptions" :key="role.value" :value="role.value">
+            {{ role.label }}
+          </option>
+        </select>
+      </div>
+      <div class="role-modifiers" v-if="sheet.npc_role !== 'none' || sheet.npc_size !== 'Medium'">
+        <span v-if="sheet.npc_combined_modifiers.ac">Armor {{ sheet.npc_combined_modifiers.ac > 0 ? '+' : '' }}{{ sheet.npc_combined_modifiers.ac }}</span>
+        <span v-if="sheet.npc_combined_modifiers.hpPct">HP {{ sheet.npc_combined_modifiers.hpPct > 0 ? '+' : '' }}{{ sheet.npc_combined_modifiers.hpPct }}%</span>
+        <span v-if="sheet.npc_combined_modifiers.atkBonus">Attack {{ sheet.npc_combined_modifiers.atkBonus > 0 ? '+' : '' }}{{ sheet.npc_combined_modifiers.atkBonus }}</span>
+        <span v-if="sheet.npc_combined_modifiers.dprPct">DPR {{ sheet.npc_combined_modifiers.dprPct > 0 ? '+' : '' }}{{ sheet.npc_combined_modifiers.dprPct }}%</span>
       </div>
       <label class="whisper-toggle">
         <input type="checkbox" v-model="sheet.npc_whisper_rolls" />
@@ -341,6 +368,21 @@ const toggleUnitDefeated = (index) => {
 
     .separator {
       color: var(--borderColor);
+    }
+  }
+
+  .role-modifiers {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    font-size: 0.75rem;
+
+    span {
+      padding: 2px 8px;
+      border-radius: 3px;
+      background: var(--header-blue);
+      color: white;
+      font-weight: bold;
     }
   }
 

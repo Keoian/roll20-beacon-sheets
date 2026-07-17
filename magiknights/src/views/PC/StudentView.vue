@@ -10,6 +10,7 @@ import RepeatingItem from '@/components/RepeatingItem.vue';
 import Collapsible from '@/components/Collapsible.vue';
 import SocialSection from '@/components/SocialSection.vue';
 import NotchContainer from '@/components/NotchContainer.vue';
+import MagiSquire from '@/components/MagiSquire.vue';
 
 const sheet = useSheetStore();
 const studentAttributes = [
@@ -177,9 +178,119 @@ function studentAbilitySummary()
       </div>
     </div>
   </NotchContainer>
+
+  <!-- Magi-Squire companion (bound to the Herald system) -->
+  <MagiSquire />
+
+  <!-- Sleep Phase effect and daily-limited abilities -->
+  <NotchContainer class="sleep-limits-container" width="thick" notchType="curve">
+    <h4>Sleep Phase &amp; Daily Limits</h4>
+    <div class="sleep-effect-row">
+      <label
+        v-for="(data, key) in sheet.sleepEffectData"
+        :key="key"
+        class="sleep-option"
+        :class="{ active: sheet.sleepEffect === key }"
+        :title="data.note"
+      >
+        <input type="radio" :value="key" v-model="sheet.sleepEffect" name="sleep-effect" />
+        {{ data.name }}
+      </label>
+    </div>
+    <div class="sleep-note">{{ sheet.sleepEffectData[sheet.sleepEffect]?.note }}</div>
+    <div class="daily-limits">
+      <label class="limit-item">
+        <input type="checkbox" v-model="sheet.sealImplantGiven" />
+        Crystalline Seal given (1/day)
+      </label>
+      <label class="limit-item">
+        <input type="checkbox" v-model="sheet.sealImplantReceived" />
+        Crystalline Seal received (1/day)
+      </label>
+      <label class="limit-item" v-if="sheet.magical_implement.qualities.manaConduit">
+        <input type="checkbox" v-model="sheet.manaConduitUsed" />
+        Mana Conduit used (1/Sleep Phase)
+      </label>
+      <label class="limit-item">
+        <input type="checkbox" v-model="sheet.freakingOutToday" />
+        Oppressive Stress today
+      </label>
+      <div class="limit-item soul-sacrifice">
+        <span>Soul Sacrifice</span>
+        <input type="number" min="0" class="underline sacrifice-count" v-model.number="sheet.soulSacrificeCount" />
+        <span>/ {{ sheet.soulSacrificeMax }} (Rep Level, per career)</span>
+      </div>
+    </div>
+  </NotchContainer>
 </template>
 
 <style lang="scss">
+.sleep-limits-container {
+  display: grid;
+  gap: var(--tiny-gap);
+
+  .sleep-effect-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+
+    .sleep-option {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 0.8rem;
+      padding: 2px 8px;
+      border: 1px solid var(--borderColor);
+      border-radius: 3px;
+      cursor: pointer;
+
+      &.active {
+        border-color: var(--header-blue);
+        color: var(--header-blue);
+        font-weight: bold;
+      }
+
+      input[type='radio'] {
+        margin: 0;
+      }
+    }
+  }
+
+  .sleep-note {
+    font-size: 0.7rem;
+    font-style: italic;
+    color: #666;
+  }
+
+  .daily-limits {
+    display: grid;
+    gap: 4px;
+
+    .limit-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.8rem;
+
+      input[type='checkbox'] {
+        margin: 0;
+        width: 14px;
+        height: 14px;
+      }
+
+      .sacrifice-count {
+        max-width: 50px;
+      }
+    }
+  }
+}
+
+html.dark {
+  .sleep-limits-container .sleep-note {
+    color: #aaa;
+  }
+}
+
 .student-view {
   display: grid;
   gap: var(--half-gap);

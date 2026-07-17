@@ -295,6 +295,37 @@ watch(() => sheet.elemental_affinity, (newAffinity) => {
 
 <NotchContainer class="combat-form-container basic-item" width="thick" notchType="curve">
   <h4>Combat Forms</h4>
+  <div class="structured-forms">
+    <div class="flex-box half-gap grow-label">
+      <label for="active-combat-form">Active Form</label>
+      <select id="active-combat-form" class="underline" v-model="sheet.activeCombatForm">
+        <option value="">None</option>
+        <option v-for="(form, key) in sheet.combatFormData" :key="key" :value="key" :disabled="!sheet.combatFormsKnown[key]">
+          {{ form.numeral }}: {{ form.name }}{{ sheet.combatFormsKnown[key] ? '' : ' (not known)' }}
+        </option>
+      </select>
+    </div>
+    <div class="active-form-detail" v-if="sheet.combatFormData[sheet.activeCombatForm]">
+      {{ sheet.combatFormData[sheet.activeCombatForm].description }}
+      <template v-if="sheet.combatFormMastery[sheet.activeCombatForm]">
+        <br><strong>Mastery:</strong> {{ sheet.combatFormData[sheet.activeCombatForm].mastery }}
+      </template>
+    </div>
+    <div class="form-mastery-grid">
+      <div class="form-mastery-row header">
+        <span>Form</span>
+        <span>Known</span>
+        <span>Mastered</span>
+      </div>
+      <div class="form-mastery-row" v-for="(form, key) in sheet.combatFormData" :key="key" :title="form.description">
+        <span class="form-name">{{ form.numeral }}: {{ form.name }}</span>
+        <input type="checkbox" v-model="sheet.combatFormsKnown[key]" />
+        <input type="checkbox" v-model="sheet.combatFormMastery[key]" :disabled="!sheet.combatFormsKnown[key] || sheet.level < 9" :title="'Mastery requires 9th Level and Combat Form Drills'" />
+      </div>
+    </div>
+    <div class="gun-access-note" v-if="!sheet.hasFormX">Form X: Regulation is required to wield Soul Guns</div>
+  </div>
+  <h5 class="custom-forms-header">Custom Form Notes</h5>
   <RepeatingSection name="forms">
     <RepeatingItem name="forms" v-for="item in sheet.sections.forms.rows" :key="item._id" :row="item">
       <Collapsible class="form-item basic-item" :default="item.collapsed" @collapse="item.collapsed = !item.collapsed">
@@ -319,6 +350,15 @@ watch(() => sheet.elemental_affinity, (newAffinity) => {
     </RepeatingItem>
   </RepeatingSection>
 </NotchContainer>
+  <NotchContainer class="level-abilities-container basic-item" width="thick" notchType="curve">
+    <h4>Knight Abilities</h4>
+    <div class="level-ability" v-for="(data, key) in sheet.levelAbilityData" :key="key" :class="{ locked: !sheet.levelAbilities[key] }">
+      <span class="ability-status material-symbols-outlined">{{ sheet.levelAbilities[key] ? 'lock_open' : 'lock' }}</span>
+      <span class="ability-name">{{ data.name }} (Level {{ data.level }}+)</span>
+      <span class="ability-desc">{{ data.description }}</span>
+    </div>
+  </NotchContainer>
+
   <NotchContainer class="arm-rune-container basic-item" width="thick" notchType="curve">
     <h4>Soul Armament Runes</h4>
     <RepeatingSection name="runes">
@@ -380,6 +420,10 @@ watch(() => sheet.elemental_affinity, (newAffinity) => {
   <div class="relics-section">
     <NotchContainer>
       <h4>relics</h4>
+      <div class="relic-capacity" :class="{ 'over-capacity': sheet.relicsOverCapacity }">
+        {{ sheet.sections.relics.rows.length }}/{{ sheet.relicCapacity }} Relics (max = Reputation Level)
+        <span v-if="sheet.relicsOverCapacity"> — over capacity!</span>
+      </div>
       <RepeatingSection name="relics">
         <RepeatingItem v-for="item in sheet.sections.relics.rows" :key="item._id" :row="item" name="relics"
           class="relics-item">
@@ -447,6 +491,23 @@ watch(() => sheet.elemental_affinity, (newAffinity) => {
                   <option v-for="proficiency in availableResistProficiency" :value="proficiency" :key="proficiency">{{ proficiency }}</option>
                 </select>
               </NotchContainer>
+      <span class="elemental_label">Rolls to Resist</span>
+      <div class="resist-modifiers-grid">
+        <div class="resist-row header">
+          <span>Type</span>
+          <span>Adv</span>
+          <span>Dis</span>
+          <span></span>
+        </div>
+        <div class="resist-row" v-for="(mods, type) in sheet.resistModifiers" :key="type">
+          <span class="resist-type">{{ capitalize(type) }}</span>
+          <input type="checkbox" v-model="mods.advantage" />
+          <input type="checkbox" v-model="mods.disadvantage" />
+          <span class="resist-state" :class="sheet.activeResistModifiers[type]">
+            {{ sheet.activeResistModifiers[type] !== 'normal' ? sheet.activeResistModifiers[type] : '' }}
+          </span>
+        </div>
+      </div>
   </NotchContainer>
   <NotchContainer>
     <div class="flex-box half-gap flex-wrap grid-span-all justify-space-between">
@@ -642,6 +703,147 @@ input{
   color: #666;
   font-style: italic;
   margin-left: 4px;
+}
+
+.combat-form-container {
+  .structured-forms {
+    display: grid;
+    gap: var(--tiny-gap);
+  }
+
+  .active-form-detail {
+    font-size: 0.75rem;
+    font-style: italic;
+    color: #666;
+  }
+
+  .form-mastery-grid {
+    display: grid;
+    gap: 2px;
+
+    .form-mastery-row {
+      display: grid;
+      grid-template-columns: 1fr auto auto;
+      gap: 8px;
+      align-items: center;
+      font-size: 0.8rem;
+
+      &.header {
+        font-size: 0.7rem;
+        font-weight: bold;
+        text-transform: uppercase;
+        color: var(--header-blue);
+        border-bottom: 1px solid var(--borderColor);
+      }
+
+      input[type='checkbox'] {
+        margin: 0;
+        width: 14px;
+        height: 14px;
+      }
+    }
+  }
+
+  .gun-access-note {
+    font-size: 0.7rem;
+    font-style: italic;
+    color: #c62828;
+  }
+
+  .custom-forms-header {
+    margin: var(--tiny-gap) 0 0;
+    text-transform: uppercase;
+    font-size: 0.75rem;
+    color: var(--header-blue);
+  }
+}
+
+.level-abilities-container {
+  display: grid;
+  gap: var(--tiny-gap);
+
+  .level-ability {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 2px 8px;
+    font-size: 0.8rem;
+
+    &.locked {
+      opacity: 0.5;
+    }
+
+    .ability-status {
+      grid-row: span 2;
+      align-self: center;
+      font-size: 18px;
+    }
+
+    .ability-name {
+      font-weight: bold;
+    }
+
+    .ability-desc {
+      font-size: 0.7rem;
+      color: #666;
+    }
+  }
+}
+
+.relic-capacity {
+  font-size: 0.75rem;
+  font-weight: bold;
+
+  &.over-capacity {
+    color: #c62828;
+  }
+}
+
+.resist-modifiers-grid {
+  display: grid;
+  gap: 2px;
+
+  .resist-row {
+    display: grid;
+    grid-template-columns: 1fr auto auto 1fr;
+    gap: 8px;
+    align-items: center;
+    font-size: 0.8rem;
+
+    &.header {
+      font-size: 0.7rem;
+      font-weight: bold;
+      text-transform: uppercase;
+      color: var(--header-blue);
+      border-bottom: 1px solid var(--borderColor);
+    }
+
+    input[type='checkbox'] {
+      margin: 0;
+      width: 14px;
+      height: 14px;
+    }
+
+    .resist-state {
+      font-size: 0.7rem;
+      font-weight: bold;
+      text-transform: capitalize;
+
+      &.advantage {
+        color: #2e7d32;
+      }
+
+      &.disadvantage {
+        color: #c62828;
+      }
+    }
+  }
+}
+
+html.dark {
+  .combat-form-container .active-form-detail,
+  .level-abilities-container .level-ability .ability-desc {
+    color: #aaa;
+  }
 }
 
 .soul-gun-container {
