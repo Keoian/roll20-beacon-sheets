@@ -374,21 +374,21 @@ export const useSheetStore = defineStore('sheet',() => {
   };
 
   const customProficiency = ref('');
-  const proficiency = ref(calculateProficiency());
-
-  function calculateProficiency() {
-    if (reputation.value > 5){
-      return 6;
-    }
-    if (reputation.value < 0){
-      return 0;
-    }
-    if (customProficiency.value != undefined && customProficiency.value != '') {
-      return customProficiency.value;
-    } else {
+  // Proficiency derives from Reputation (SRD core-rules table) unless a
+  // custom value is entered; writes store the custom override.
+  const proficiency = computed({
+    get() {
+      if (customProficiency.value !== undefined && customProficiency.value !== '') {
+        return Number(customProficiency.value);
+      }
+      if (reputation.value > 5) return 6;
+      if (reputation.value < 0) return 0;
       return proficiencyMap[reputation.value];
+    },
+    set(value) {
+      customProficiency.value = value === '' ? '' : value;
     }
-  }
+  });
 
   // skills
   const skillDetails = {
@@ -1012,11 +1012,13 @@ export const useSheetStore = defineStore('sheet',() => {
   const knight_move = ref('');
 
   // Soul Armament Progression - auto-calculated bonuses based on Reputation Level
+  // SRD equipment.md Soul Armament Progression: Rep 0 +0/—, I +1 Armor,
+  // II +1/+1, III +2 Armor/+1 Weapon, IV +2/+2, V +3/+3
   const soulArmamentData = {
     0: { weapon: 0, armor: 0 },
-    1: { weapon: 1, armor: 0 },
+    1: { weapon: 0, armor: 1 },
     2: { weapon: 1, armor: 1 },
-    3: { weapon: 2, armor: 1 },
+    3: { weapon: 1, armor: 2 },
     4: { weapon: 2, armor: 2 },
     5: { weapon: 3, armor: 3 }
   };
@@ -2259,7 +2261,6 @@ export const useSheetStore = defineStore('sheet',() => {
     resoundingGrowths.value = hydrateStore.resoundingGrowths ?? resoundingGrowths.value;
     clubPosition.value = hydrateStore.clubPosition ?? clubPosition.value;
     customProficiency.value = hydrateStore.customProficiency ?? customProficiency.value;
-    proficiency.value = calculateProficiency();
     player.value = hydrateStore.player ?? player.value;
     inspiration.value = hydrateStore.inspiration ?? inspiration.value;
     stress.value = hydrateStore.stress ?? stress.value;
@@ -3862,6 +3863,7 @@ export const useSheetStore = defineStore('sheet',() => {
     rollMode,
     effectiveRollMode,
     forcedDisadvantage,
+    getEnduranceDieInfo,
 
     // Conditions
     conditions,

@@ -886,3 +886,30 @@ the official "MKA CharSheets Printable" PDF:
 
 Verified with Playwright screenshots of all five pages (no console errors) and
 vitest 269/269.
+
+### 2026-07-17 — SDET verification pass
+
+Added `src/__tests__/rules/srdRules.spec.js` (53 tests) asserting SRD formulas
+react to field edits: ability mods + mortal-limit cap, proficiency table,
+HP/MP/SHP/Student Armor formulas, tactic modifiers (Tough as Nails, Adept of
+Magic), spell attack/DC, tier gates, spell path caps, condition-driven roll
+modes, resist adv/dis, Endurance Die levels, eclipse counts, Heroic Conviction,
+Total Focus breaks (incl. Single-Minded Focus), Soul Armament progression,
+rune/relic capacity, gun table + Akimbo, implement computeds, Form X gating,
+level abilities, stat increases, bond stage tables, unity, squire damage,
+Divination draws/flip/expend/redraw, NPC size/role tables, and a round-trip
+serialization test for the newest state.
+
+Playwright E2E (scratchpad validate-export-import.mjs): edits fields through
+the real UI (student type autofill, gear row, condition toggle, shard library,
+weapon preset), validates live derived values, exports via the Export JSON
+button, asserts the saved file contents, reloads fresh, imports the file, and
+verifies full restoration. 37/37 checks pass.
+
+Bugs found and fixed:
+- Proficiency was a one-shot ref only recalculated on hydrate; editing
+  Reputation live never updated it (SkillSection watchers papered over it in
+  PC mode only). Now a writable computed derived from Reputation with the
+  customProficiency override; duplicate watcher logic removed.
+- Soul Armament progression had armor/weapon transposed vs the SRD at
+  Rep I and III (gave +1 Weapon at Rep I instead of +1 Armor).

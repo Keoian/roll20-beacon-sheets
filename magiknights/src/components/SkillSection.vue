@@ -1,5 +1,5 @@
 <script setup>
-import { watch, computed } from 'vue';
+import { computed } from 'vue';
 import NotchContainer from './NotchContainer.vue';
 import Skill from './Skill.vue';
 import { useSheetStore } from '@/stores/sheetStore';
@@ -11,56 +11,8 @@ const skillRefs = skills.map(s => s.replace(/\s+/g, '_'));
 
 const masteryBonus = computed(() => Math.max(1, sheet.reputation));
 
-const proficiencyMap = {
-    0: 2,  // or use a more detailed lookup based on the table
-    1: 3,
-    2: 3,
-    3: 4,
-    4: 5,
-    5: 6
-  };
-
-  watch(
-      () => sheet.customProficiency,
-      (newValue, oldValue) =>
-      {
-        if (newValue != '') {
-          sheet.proficiency = newValue;
-        } else {
-          var reputation = sheet.reputation;
-          if (reputation > 5) {
-            sheet.proficiency = 6;
-          } else if (reputation < 0) {
-            sheet.proficiency = 0;
-          } else {
-            sheet.proficiency = Number(proficiencyMap[reputation]);
-          }
-        }
-      }
-    );
-
-    watch(
-      () => sheet.reputation,
-      (newValue, oldValue) =>
-      {
-      if (newValue > 5){
-        sheet.proficiency = 6;
-        return;
-      }
-      if (newValue < 0){
-        sheet.proficiency = 0;
-        return;
-      }
-        var oldProf = sheet.proficiency;
-        if (sheet.customProficiency == '' || sheet.customProficiency == undefined)
-      {
-        var reputation = sheet.reputation;
-        sheet.proficiency = Number(proficiencyMap[reputation]);
-      }else{
-        sheet.proficiency = oldProf;
-      }
-    });
-
+// Proficiency now derives reactively from Reputation in the store;
+// the input below writes the customProficiency override directly.
 </script>
 
 <template>
