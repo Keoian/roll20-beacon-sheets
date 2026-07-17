@@ -40,6 +40,14 @@ const sheet = useSheetStore();
         <input type="number" v-model="sheet.shp.max" id="max-shp">
       </div>
     </div>
+    <button
+      v-if="Number(sheet.hp.current) <= 0"
+      class="heroic-conviction-btn"
+      @click="sheet.useHeroicConviction()"
+      title="At 0 HP: take 1 additional Crystalline Fracture to regain 1 HP and stay conscious"
+    >
+      Heroic Conviction (+1 Fracture, regain 1 HP)
+    </button>
   </div>
 </template>
 
@@ -131,5 +139,22 @@ const sheet = useSheetStore();
 
 .double-cell {
   grid-column: span 2;
+}
+
+.heroic-conviction-btn {
+  grid-column: 1 / -1;
+  padding: 4px 8px;
+  font-size: 0.75rem;
+  font-weight: bold;
+  background: #c62828;
+  color: white;
+  border: none;
+  border-radius: 3px;
+  cursor: pointer;
+  z-index: 20;
+
+  &:hover {
+    opacity: 0.9;
+  }
 }
 </style>

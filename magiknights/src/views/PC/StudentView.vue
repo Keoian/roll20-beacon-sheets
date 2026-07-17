@@ -51,6 +51,27 @@ function studentAbilitySummary()
   return sheet.student_ability.description;
 }
 
+// SRD Student Types (character-creation.md)
+const studentTypeData = {
+  Agile: { bonus: '+2 DEX, +1 Any (req DEX 12+)', skills: 'Athletics, Coordination, Stealth', ability: 'Unstoppable Momentum', abilityDesc: 'Immediate, Inspiration: Next DEX Check = 20+Mod (non-combat)' },
+  Athletic: { bonus: '+2 STR, +1 Any (req STR 12+)', skills: 'Athletics, Influence, Leadership', ability: 'Athletic Endurance', abilityDesc: 'Immediate, Inspiration: Next STR/CON Check = 20+Mod (non-combat)' },
+  Average: { bonus: '+1 to three Stats (no stat above 15)', skills: 'Three skills of choice', ability: 'Untapped Potential', abilityDesc: 'Immediate, Inspiration: Next non-Purity Check = 11+Mod. Keeper tells if pass/fail (non-combat)' },
+  Charming: { bonus: '+2 CHA, +1 Any (req CHA 12+)', skills: 'Insight, Leadership, Persuasion', ability: 'Forceful Personality', abilityDesc: 'Immediate, Inspiration: Next CHA Check = 20+Mod (non-combat)' },
+  Creative: { bonus: '+1 INT, +1 WIS, +1 Any (req INT 11+ and WIS 11+)', skills: 'Creativity, Insight, Perception', ability: 'Artistic Vision', abilityDesc: 'Immediate, Inspiration: Next Creativity/Insight/Perception Check = 20+Mod (non-combat)' },
+  Intellectual: { bonus: '+2 INT, +1 Any (req INT 12+)', skills: 'Investigation, Medicine, STEM', ability: 'Prodigy', abilityDesc: 'Immediate, Inspiration: Next INT Check = 20+Mod (non-combat)' },
+  Spiritual: { bonus: '+2 WIS, +1 Any (req WIS 12+)', skills: 'Academic Arts, Mysticism, Purity', ability: 'Self-Disciplined', abilityDesc: 'Immediate, Inspiration: Next WIS Check = 20+Mod (non-combat)' },
+  Troubled: { bonus: '+2 Any, +1 Any', skills: 'Deception, Influence, Perception', ability: 'Sealed Heart OR Detached Heart', abilityDesc: 'Sealed Heart (1 Trauma): Immediate, Inspiration: Prevent 1 Trauma from single source. Detached Heart (2 Trauma): Purity Resists with Advantage; on failure +1 Trauma' }
+};
+
+// When a known Student Type is picked, fill the Student Ability if empty
+const applyStudentTypeAbility = () => {
+  const data = studentTypeData[sheet.student_type];
+  if (data && !sheet.student_ability.name) {
+    sheet.student_ability.name = data.ability;
+    sheet.student_ability.description = data.abilityDesc;
+  }
+};
+
 // Studied toggle: cycles empty → X (Combat) → O (School) → XO (Both) → empty
 const studiedDisplay = computed(() => {
   if (sheet.studiedCombat && sheet.studiedSchool) return 'XO';
@@ -185,7 +206,13 @@ const nourishedTooltip = computed(() => {
     <div>
       <notch-container class="student-type">
       <h4>Student Type</h4>
-      <input class="underline student-type" type="text" v-model="sheet.student_type" placeholder="Enter Student Type">
+      <input class="underline student-type" type="text" v-model="sheet.student_type" placeholder="Enter Student Type" list="student-type-options" @change="applyStudentTypeAbility">
+      <datalist id="student-type-options">
+        <option v-for="(data, type) in studentTypeData" :key="type" :value="type">{{ data.skills }}</option>
+      </datalist>
+      <div class="student-type-hint" v-if="studentTypeData[sheet.student_type]">
+        {{ studentTypeData[sheet.student_type].bonus }} — {{ studentTypeData[sheet.student_type].skills }}
+      </div>
     </notch-container>
     <NotchContainer class="fate-card" width="thick" notchType="wedge">
       <h4>Fate Card</h4>
@@ -273,6 +300,16 @@ const nourishedTooltip = computed(() => {
 </template>
 
 <style lang="scss">
+.student-type-hint {
+  font-size: 0.7rem;
+  font-style: italic;
+  color: #666;
+}
+
+html.dark .student-type-hint {
+  color: #aaa;
+}
+
 .student-view {
   display: grid;
   gap: var(--half-gap);

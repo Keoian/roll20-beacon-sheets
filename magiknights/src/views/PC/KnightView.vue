@@ -15,6 +15,7 @@ import RepeatingItem from '@/components/RepeatingItem.vue';
 import Collapsible from '@/components/Collapsible.vue';
 import SpellSection from '@/components/SpellSection.vue';
 import ReleaseMagic from '@/components/ReleaseMagic.vue';
+import DivinationDeck from '@/components/DivinationDeck.vue';
 import WeaponQualitiesSelector from '@/components/WeaponQualitiesSelector.vue';
 import GunQualitiesSelector from '@/components/GunQualitiesSelector.vue';
 import ImplementQualitiesSelector from '@/components/ImplementQualitiesSelector.vue';
@@ -24,6 +25,88 @@ import CombinationManeuvers from '@/components/CombinationManeuvers.vue';
 import { useSheetStore } from '@/stores/sheetStore';
 
 const sheet = useSheetStore();
+
+// SRD Soul Weapon table (equipment.md)
+const soulWeaponPresets = {
+  "Paragon's Light Weapon": { damage: '1d6', range: 'Melee (5ft)', qualities: ['coupled', 'finesse', 'veilPiercing'] },
+  "Knight's Medium Weapon": { damage: '1d8', range: 'Melee (5ft)', qualities: ['accurate', 'veilPiercing'] },
+  "Hero's Power Gloves": { damage: '2d4', range: 'Melee (5ft)', qualities: ['accurate', 'forceful', 'finesse', 'twoHanded'] },
+  "Champion's Heavy Weapon": { damage: '2d6', range: 'Melee (5ft)', qualities: ['twoHanded', 'vicious'] },
+  "Defender's Massive Weapon": { damage: '1d12', range: 'Melee (10ft)', qualities: ['massive', 'staggeringBlow', 'twoHanded', 'vicious'] },
+  "Dancer's Energy Snare": { damage: '1d6', range: 'Melee (15ft)', qualities: ['coupled', 'ensnaring', 'finesse'] },
+  "Scout's Throwing Weapon": { damage: '1d6', range: '25/50 ft', qualities: ['coupled', 'finesse', 'vicious'] },
+  "Guardian's Ranged Weapon": { damage: '1d8', range: '60/120 ft', qualities: ['finesse', 'twoHanded', 'veilPiercing'] }
+};
+
+const applyWeaponPreset = (name) => {
+  const preset = soulWeaponPresets[name];
+  if (!preset) return;
+  sheet.soul_weapon.name = name;
+  sheet.soul_weapon.damage = preset.damage;
+  sheet.soul_weapon.range = preset.range;
+  Object.keys(sheet.soul_weapon.qualities).forEach(key => {
+    sheet.soul_weapon.qualities[key] = preset.qualities.includes(key);
+  });
+};
+
+// SRD Magical Implement table (equipment.md)
+const implementPresets = {
+  "Witch's Force Wand": { damage: '1d4', qualities: ['manaAttunement', 'manaConduit', 'radiance', 'warding'] },
+  "Wizard's Magic Staff": { damage: '1d6', qualities: ['embolden', 'manaAttunement', 'manaConduit', 'twoHanded', 'warding'] },
+  "Master's Instrument": { damage: '1d4', qualities: ['embolden', 'manaAttunement', 'manaConduit', 'radiance', 'twoHanded'] },
+  "Collector's Spell Deck": { damage: '', qualities: ['cardConductor', 'light'] }
+};
+
+const applyImplementPreset = (name) => {
+  const preset = implementPresets[name];
+  if (!preset) return;
+  sheet.magical_implement.name = name;
+  if (preset.damage && !sheet.magical_implement.description) {
+    sheet.magical_implement.description = `Damage: ${preset.damage}, Melee (5ft)`;
+  }
+  Object.keys(sheet.magical_implement.qualities).forEach(key => {
+    sheet.magical_implement.qualities[key] = preset.qualities.includes(key);
+  });
+};
+
+// SRD Armament Runes (equipment.md). slotCost = Rune Slots used.
+const runeLibrary = {
+  'Weapon Runes': [
+    { name: 'Enhanced Element', slotCost: 1, description: 'Weapon Damage +1d6. May imbue twice' },
+    { name: 'Discharge Energy', slotCost: 1, description: '1/Phase Full-Round: Weapon Attack 60ft, +2d10 Magical. Miss = 1/2 damage' },
+    { name: 'Imbued with Power', slotCost: 1, description: 'Add a Weapon Quality (Coupled/Finesse require non-Two-Handed). May imbue twice. Implement Qualities: Embolden/Radiance 1 slot, Mana Conduit/Warding 2, Mana Attunement 3' },
+    { name: 'Sending Weapon', slotCost: 1, description: '1/Round: Throw 60ft, +1 Attack/+1 Damage. Returns at end of turn' },
+    { name: 'Shifting Weapon', slotCost: 1, description: 'Standard Action: Change damage type Physical/Magical until end of Encounter' },
+    { name: 'Bane of Elsewhere', slotCost: 2, description: '+2d6 Magical Damage vs Spectral Outsiders' },
+    { name: 'Energy Siphoning', slotCost: 2, description: '+10 Temp HP. +10 damage on Critical Hit' },
+    { name: 'Fatal Elemental Enchantment', slotCost: 2, description: 'Add MAM to Weapon Damage. 2x MAM with Implement Mastery' },
+    { name: 'Radiant Energy', slotCost: 2, description: '1/Round on 16+: Heal HP = Magi-Knight Level' },
+    { name: 'Serrated Energy', slotCost: 2, description: '+7 damage on Critical Hit. +7 more vs Spectral Outsiders' },
+    { name: 'Upgrade Magical Implement', slotCost: 2, description: 'Ultra Embolden: +2+Level damage. Ultra Radiance: +4+Level HP. Ultra Warding: Reduce by Level' },
+    { name: 'Mystical Strengthening', slotCost: 3, description: '+2 Spell DC, +2 Spell Attack Bonus' },
+    { name: 'Quickened Weapon', slotCost: 3, description: '+2 Attack, +2 Damage. 1/Round: Weapon Attack as Bonus Action, or Secondary as Free Action' },
+    { name: 'Volatile Blast Enchantment', slotCost: 3, description: '1/Sleep Phase Bonus: Weapon Attack 60ft, Weapon Damage + 8d6 Magical. Miss = 1/2 damage' }
+  ],
+  'Armor Runes': [
+    { name: 'Blinding Stride', slotCost: 1, description: '1/Sleep Phase Bonus: Double Move, Disadvantage when Provoking until battle ends' },
+    { name: 'Levitation', slotCost: 1, description: 'Hovering does not require Total Focus. Flight activates as Bonus instead of Standard' },
+    { name: 'Magical Absorption', slotCost: 1, description: '1/Sleep Phase Immediate: Reduce Magical Damage by Rep Level d12s' },
+    { name: 'Weapon Absorption', slotCost: 1, description: '1/Sleep Phase: Reduce Physical Damage by Rep Level d12s' },
+    { name: 'Deflection', slotCost: 2, description: '+1 to all Rolls to Resist' },
+    { name: 'Enhanced Sight', slotCost: 2, description: 'Advantage on Investigation and Perception Checks' },
+    { name: 'Flash Step', slotCost: 2, description: '1/Sleep Phase Reaction: 1/2 damage, reappear 30ft away' },
+    { name: 'Minor Relocation', slotCost: 2, description: '1/Sleep Phase Move: Teleport 20ft (visible). May return at end of turn' },
+    { name: 'All-Seeing', slotCost: 3, description: '360 degree vision. Advantage on Perception. No Advantage against you during Ambush' },
+    { name: 'True Enhancement', slotCost: 3, description: '+1 to all Skill Checks. +1 to all Rolls to Resist' }
+  ]
+};
+
+const addRuneFromLibrary = (rune) => {
+  sheet.addRow('runes');
+  const newRow = sheet.sections.runes.rows[sheet.sections.runes.rows.length - 1];
+  Object.assign(newRow, { name: rune.name, slotCost: rune.slotCost, description: rune.description, collapsed: true });
+};
+
 const knightAttributes = [
   {
     name: 'spell_dc',
@@ -217,6 +300,23 @@ watch(() => sheet.elemental_affinity, (newAffinity) => {
             </span>
           </div>
           <div v-if="sheet.runesOverCapacity" class="rune-warning">Over capacity! Max slots = Reputation Level</div>
+          <details class="rune-library">
+            <summary>Rune Library (Quick Add)</summary>
+            <div class="rune-library-group" v-for="(group, groupName) in runeLibrary" :key="groupName">
+              <div class="rune-group-label">{{ groupName }}</div>
+              <div class="rune-library-grid">
+                <button
+                  v-for="rune in group"
+                  :key="rune.name"
+                  class="rune-library-btn"
+                  :title="rune.description"
+                  @click="addRuneFromLibrary(rune)"
+                >
+                  {{ rune.name }} <span class="rune-slot-badge">({{ rune.slotCost }})</span>
+                </button>
+              </div>
+            </div>
+          </details>
           <RepeatingSection name="runes">
             <RepeatingItem name="runes" v-for="item in sheet.sections.runes.rows" :key="item._id" :row="item">
               <Collapsible class="form-item basic-item" :default="item.collapsed" @collapse="item.collapsed = !item.collapsed">
@@ -307,6 +407,15 @@ watch(() => sheet.elemental_affinity, (newAffinity) => {
             <Collapsible class="basic-item" :default="sheet.soul_weapon.collapsed" @collapse="sheet.soul_weapon.collapsed = !sheet.soul_weapon.collapsed">
               <template v-slot:expanded>
                 <div class="flex-box half-gap grow-label">
+                  <label for="soul-weapon-preset">Preset</label>
+                  <select id="soul-weapon-preset" class="input-field" @change="applyWeaponPreset($event.target.value); $event.target.value = ''">
+                    <option value="">Apply Soul Weapon preset…</option>
+                    <option v-for="(preset, key) in soulWeaponPresets" :key="key" :value="key">
+                      {{ key }} ({{ preset.damage }}, {{ preset.range }})
+                    </option>
+                  </select>
+                </div>
+                <div class="flex-box half-gap grow-label">
                   <label :for="`soul-weapon-name`">Name</label>
                   <input class="input-field" type="text" v-model="sheet.soul_weapon.name" :id="`soul-weapon-name`">
                 </div>
@@ -372,6 +481,15 @@ watch(() => sheet.elemental_affinity, (newAffinity) => {
           <h4>Magical Implement</h4>
           <Collapsible class="basic-item" :default="sheet.magical_implement.collapsed" @collapse="sheet.magical_implement.collapsed = !sheet.magical_implement.collapsed">
             <template v-slot:expanded>
+              <div class="flex-box half-gap grow-label">
+                <label for="implement-preset">Preset</label>
+                <select id="implement-preset" class="input-field" @change="applyImplementPreset($event.target.value); $event.target.value = ''">
+                  <option value="">Apply Implement preset…</option>
+                  <option v-for="(preset, key) in implementPresets" :key="key" :value="key">
+                    {{ key }}{{ preset.damage ? ` (${preset.damage})` : '' }}
+                  </option>
+                </select>
+              </div>
               <div class="flex-box half-gap grow-label">
                 <label :for="`magical-implement-name`">Name</label>
                 <input class="input-field" type="text" v-model="sheet.magical_implement.name" :id="`magical-implement-name`">
@@ -480,6 +598,30 @@ watch(() => sheet.elemental_affinity, (newAffinity) => {
   <!-- Combination Maneuvers - Per compendium: requires 2+ Magi-Knights and Unity Points (Rep II+) -->
   <div class="combos-section grid-span-all">
     <CombinationManeuvers />
+  </div>
+
+  <!-- Total Focus and Spell Modifications (SRD: spell-paths-advanced.md) -->
+  <NotchContainer class="casting-tools-container grid-span-all" width="thick" notchType="curve">
+    <div class="casting-tools-row">
+      <label class="total-focus-toggle" :class="{ active: sheet.totalFocus, broken: sheet.totalFocus && sheet.totalFocusBroken }">
+        <input type="checkbox" v-model="sheet.totalFocus" />
+        Total Focus
+        <span v-if="sheet.totalFocus && sheet.totalFocusBroken" class="focus-warning">— broken by active Condition!</span>
+      </label>
+      <details class="spell-mods">
+        <summary>Spell Modifications</summary>
+        <div class="spell-mod-list">
+          <div v-for="(mod, key) in sheet.spellModificationData" :key="key" class="spell-mod-item">
+            <strong>{{ mod.name }}:</strong> {{ mod.effect }}
+          </div>
+        </div>
+      </details>
+    </div>
+  </NotchContainer>
+
+  <!-- Divination card system: needs the Collector's Spell Deck (Card Conductor) -->
+  <div class="grid-span-all" v-if="sheet.magical_implement.qualities.cardConductor && sheet.magic_style !== 'Release'">
+    <DivinationDeck />
   </div>
 
   <div class="spell-path-container grid-span-all">
@@ -605,6 +747,106 @@ watch(() => sheet.elemental_affinity, (newAffinity) => {
   .spell-path-container{
     display: grid;
     gap: var(--half-gap);
+  }
+  .rune-library {
+    font-size: 0.8rem;
+
+    summary {
+      cursor: pointer;
+      font-weight: bold;
+      color: var(--header-blue);
+    }
+
+    .rune-group-label {
+      font-size: 0.7rem;
+      font-weight: bold;
+      text-transform: uppercase;
+      color: var(--header-blue);
+      border-bottom: 1px solid var(--borderColor);
+      margin-top: 4px;
+    }
+
+    .rune-library-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+      gap: 4px;
+      padding-top: 4px;
+    }
+
+    .rune-library-btn {
+      padding: 3px 6px;
+      text-align: left;
+      font-size: 0.7rem;
+      border: 1px solid var(--header-blue);
+      border-radius: 4px;
+      background: transparent;
+      color: inherit;
+      cursor: pointer;
+
+      &:hover {
+        background: var(--header-blue);
+        color: white;
+      }
+    }
+  }
+
+  .casting-tools-container {
+    .casting-tools-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: flex-start;
+      gap: 12px;
+    }
+
+    .total-focus-toggle {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.85rem;
+      font-weight: bold;
+      cursor: pointer;
+
+      &.active {
+        color: var(--header-blue);
+      }
+
+      &.broken {
+        color: #c62828;
+      }
+
+      input[type='checkbox'] {
+        margin: 0;
+        width: 14px;
+        height: 14px;
+      }
+
+      .focus-warning {
+        font-weight: normal;
+        font-size: 0.75rem;
+      }
+    }
+
+    .spell-mods {
+      flex: 1;
+      min-width: 250px;
+      font-size: 0.8rem;
+
+      summary {
+        cursor: pointer;
+        font-weight: bold;
+        color: var(--header-blue);
+      }
+
+      .spell-mod-list {
+        display: grid;
+        gap: 4px;
+        padding: 4px 0 0 12px;
+      }
+
+      .spell-mod-item {
+        font-size: 0.75rem;
+      }
+    }
   }
   .spell-paths-known {
     margin-bottom: var(--half-gap);

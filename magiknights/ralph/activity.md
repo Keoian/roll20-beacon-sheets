@@ -833,3 +833,30 @@ patched these deviations:
   Heart Stages use the SRD's 5 social-encounter stages.
 
 Verified: vitest 269/269 passing, `npm run build` clean.
+
+### 2026-07-17 — Full SRD coverage pass
+
+Closed the remaining SRD feature gaps:
+
+- Total Focus tracker with automatic "broken by Condition" warning (respects
+  Single-Minded Focus) and Spell Modifications reference (Mana Strain, Rushed
+  Spells, Overcharging, Quickening).
+- Heroic Conviction button on the HP container (0 HP: +1 Crystalline Fracture,
+  regain 1 HP).
+- Divination "Divine the Future" card system: 16 Divination Cards + 6 Court
+  Cards, 3 slots (Upright/Reversed/Upright), Reigning Card, tier/MP/Scaling
+  selection, flip/activate/redraw slot actions. Shown when the implement has
+  Card Conductor.
+- Battle Techniques quick-add library (all 26 SRD techniques with level,
+  frequency, and action prefilled; level-locked styling).
+- Combat Tactics library completed (all 24 SRD tactics) and a new Social
+  Tactics library (all 22 SRD tactics).
+- Soul Weapon presets (8 weapons) and Magical Implement presets (4 implements)
+  that fill damage/range/qualities from the SRD tables.
+- Shards of Power quick-add library (all 20 shards with rarity/cost/effect).
+- Armament Rune quick-add library (14 Weapon Runes + 10 Armor Runes with slot
+  costs).
+- Student Type datalist with the 8 SRD types (stat bonuses, skills) and
+  auto-fill of the Student Ability.
+
+Verified: vitest 269/269, `npm run build` clean.

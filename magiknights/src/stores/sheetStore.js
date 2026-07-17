@@ -247,6 +247,43 @@ export const useSheetStore = defineStore('sheet',() => {
            conditions.value.horrified;
   });
 
+  // ==================== TOTAL FOCUS & SPELL MODIFICATIONS ====================
+  // Total Focus: required to maintain certain spell effects; only one at a time.
+  const totalFocus = ref(false);
+
+  // Conditions that break Total Focus per the SRD. The Single-Minded Focus
+  // Tactic narrows the list to Horrified and Unconscious only.
+  const totalFocusBroken = computed(() => {
+    const c = conditions.value;
+    if (hasTacticActive('Single-Minded Focus')) {
+      return c.horrified || c.unconscious;
+    }
+    return c.berserk || c.depleted || c.drained || c.exposed || c.horrified ||
+           c.silenced || c.soulSiphoned1 || c.soulSiphoned2 || c.soulSiphoned3 ||
+           c.soulSiphoned4 || c.soulTainted || c.unconscious;
+  });
+
+  // Spell Modifications per the SRD (spell-paths-advanced.md)
+  const spellModificationData = {
+    manaStrain: { name: 'Mana Strain', effect: 'Take 1 Exhaustion to reduce MP cost by one tier (Tier I = 0 MP). Repeatable up to Exhaustion max' },
+    rushed: { name: 'Rushed Spell', effect: 'Beam/Explosion/Curing/Restoration: Cast as Bonus Action. Damage/healing halved (min 1)', paths: ['Beam', 'Explosion', 'Curing', 'Restoration'] },
+    overcharging: { name: 'Overcharging', effect: 'Beam/Explosion/Curing/Restoration: Gain 2 Exhaustion for bonus dice (Beam +Rep d8s, Explosion +1/2 Rep d10s, Curing +Rep d6s, Restoration +Rep d4s)', paths: ['Beam', 'Explosion', 'Curing', 'Restoration'] },
+    quickening: { name: 'Quickening', effect: 'Barrier/Summoning: Increase MP cost by 1 Tier to change Action type. No Spell Intensity Tax', paths: ['Barrier', 'Summoning'] }
+  };
+
+  // ==================== HEROIC CONVICTION ====================
+  // At 0 HP, take 1 additional Crystalline Fracture to regain 1 HP and stay
+  // conscious (avoiding Exposed/Unconscious). Not possible with all 7 facets
+  // fractured (the 8th Fracture is death).
+  const useHeroicConviction = () => {
+    const facets = ['facet1', 'facet2', 'facet3', 'facet4', 'facet5', 'facet6', 'facet7'];
+    const openFacet = facets.find(facet => !crystal[facet].value);
+    if (!openFacet) return false;
+    crystal[openFacet].value = true;
+    hp.current.value = 1;
+    return true;
+  };
+
   // abilityScores
   const strength = ref(10);
   const dexterity = ref(10);
@@ -2074,6 +2111,7 @@ export const useSheetStore = defineStore('sheet',() => {
       exhaustion: exhaustion.value,
       detentionTickets: detentionTickets.value,
       enduranceDieEnabled: enduranceDieEnabled.value,
+      totalFocus: totalFocus.value,
       freakingOutToday: freakingOutToday.value,
       sleepEffect: sleepEffect.value,
       sealImplantGiven: sealImplantGiven.value,
@@ -2100,6 +2138,10 @@ export const useSheetStore = defineStore('sheet',() => {
       elemental_affinity: elemental_affinity.value,
       magic_style: magic_style.value,
       release_magic_deck: releaseMagicDeck.value.map(card => ({ ...card })),
+      divinationTier: divinationTier.value,
+      divinationSlots: divinationSlots.value.map(slot => ({ ...slot })),
+      divinationCourtCard: divinationCourtCard.value,
+      divinationDeckState: [...divinationDeckState.value],
       release_magic_collapsed: releaseMagicCollapsed.value,
       signature_card_1: signatureCard1.value,
       signature_card_2: signatureCard2.value,
@@ -2224,6 +2266,7 @@ export const useSheetStore = defineStore('sheet',() => {
     exhaustion.value = hydrateStore.exhaustion ?? exhaustion.value;
     detentionTickets.value = hydrateStore.detentionTickets ?? detentionTickets.value;
     enduranceDieEnabled.value = hydrateStore.enduranceDieEnabled ?? enduranceDieEnabled.value;
+    totalFocus.value = hydrateStore.totalFocus ?? totalFocus.value;
     freakingOutToday.value = hydrateStore.freakingOutToday ?? freakingOutToday.value;
     sleepEffect.value = hydrateStore.sleepEffect ?? sleepEffect.value;
     sealImplantGiven.value = hydrateStore.sealImplantGiven ?? sealImplantGiven.value;
@@ -2263,6 +2306,16 @@ export const useSheetStore = defineStore('sheet',() => {
     releaseMagicCollapsed.value = hydrateStore.release_magic_collapsed ?? releaseMagicCollapsed.value;
     signatureCard1.value = hydrateStore.signature_card_1 ?? signatureCard1.value;
     signatureCard2.value = hydrateStore.signature_card_2 ?? signatureCard2.value;
+
+    // Hydrate Divination state
+    divinationTier.value = hydrateStore.divinationTier ?? divinationTier.value;
+    if (Array.isArray(hydrateStore.divinationSlots)) {
+      divinationSlots.value = hydrateStore.divinationSlots.map(slot => ({ ...slot }));
+    }
+    divinationCourtCard.value = hydrateStore.divinationCourtCard ?? divinationCourtCard.value;
+    if (Array.isArray(hydrateStore.divinationDeckState)) {
+      divinationDeckState.value = [...hydrateStore.divinationDeckState];
+    }
 
     student_damage_override.value = hydrateStore.student_damage_override ?? student_damage_override.value;
     student_armor_override.value = hydrateStore.student_armor_override ?? student_armor_override.value;
@@ -3127,6 +3180,96 @@ export const useSheetStore = defineStore('sheet',() => {
     rollToChat({ rollObj });
   };
 
+  // ==================== DIVINATION (DIVINE THE FUTURE) ====================
+  // SRD spell-paths-advanced.md: requires 2 Spell Path choices and the
+  // Collector's Spell Deck. Bonus Action: draw 3 Divination Cards into slots
+  // (1 Upright, 2 Reversed, 3 Upright) plus a Court Card as Reigning Card.
+  const divinationCardDefs = [
+    { num: 7, name: 'Light', triumvirate: 'The Chiaroscuro', upright: 'All Magi-Knights within 60ft gain +Xd4 Temp HP', reversed: 'Your ranged Weapons/Spells only extend 15ft' },
+    { num: 8, name: 'Dark', triumvirate: 'The Chiaroscuro', upright: 'Restore +X HP, teleport 10X ft, untargetable by hostile spells until your next turn', reversed: 'Line of sight limited to 15ft' },
+    { num: 9, name: 'Twilight', triumvirate: 'The Chiaroscuro', upright: 'Auto: Restore one used Divination Slot (or search deck to swap a card if all available)', reversed: 'This card + one other are replaced with two Reversed cards from the deck' },
+    { num: 10, name: 'Life', triumvirate: 'The Collective Cycle', upright: 'One Magi-Knight within 120ft heals +Xd8 HP and reduces Stress by 1', reversed: 'While Reversed: healing you receive is reduced to 0 (except Shards)' },
+    { num: 11, name: 'Death', triumvirate: 'The Collective Cycle', upright: 'One target or Horde takes +Xd12 Magical Damage', reversed: 'While Reversed: at start of turn take 1 Crystalline Fracture (max 5)' },
+    { num: 12, name: 'Passage', triumvirate: 'The Collective Cycle', upright: 'Auto: Turn one Reversed Divination Card Upright', reversed: 'Immediately Reverse one other Upright Divination Card' },
+    { num: 13, name: 'Angel', triumvirate: 'The Endless Battle', upright: 'One Outsider takes +Xd12 True Damage', reversed: 'A Cultist of Keeper\'s choice gains Physical and Magical Resistance' },
+    { num: 14, name: 'Demon', triumvirate: 'The Endless Battle', upright: 'Spell Attack vs one target: +Xd10 Magical (double vs Cultist)', reversed: 'A Vassal/Adversary Outsider immediately takes a turn out of order' },
+    { num: 15, name: 'Mortal', triumvirate: 'The Endless Battle', upright: 'Auto: Turn one Reversed Divination Card Upright', reversed: 'At end of turn revert to Student Persona; turns Upright at end of your next turn' },
+    { num: 16, name: 'Hope', triumvirate: 'The Eternal Phase', upright: 'Repair X/2 Crystalline Fractures of target and remove 2 Stress from them', reversed: 'Gain 3 Stress; cannot reduce Stress while Reversed' },
+    { num: 17, name: 'Despair', triumvirate: 'The Eternal Phase', upright: 'One Cultist receives -X to all Attacks, Resists, and Damage for one turn', reversed: 'Gain 1 Trauma (removed if turned Upright; kept if battle ends Reversed)' },
+    { num: 18, name: 'Fortune', triumvirate: 'The Eternal Phase', upright: 'Next X/2 d20 rolls receive your MAM as Bonus Modifier', reversed: 'While Reversed: your MAM becomes a negative modifier' },
+    { num: 19, name: 'Justice', triumvirate: 'The Arduous Judgment', upright: 'Spell Attack vs one target: +Xd12 Magical Damage', reversed: 'While Reversed: no MAM to Magical Damage or Healing' },
+    { num: 20, name: 'Mercy', triumvirate: 'The Arduous Judgment', upright: 'Auto: Next Convincing Argument is a Bonus Action; learn one Argument Resistance', reversed: 'While Reversed: refuse to help Mortals; reduce one enemy Heart Stage by 1' },
+    { num: 21, name: 'Reflection', triumvirate: 'The Arduous Judgment', upright: 'One Magi-Knight gains +Xd4 MP up to maximum', reversed: 'While Reversed: cannot gain HP, MP, or Temp HP from any source' },
+    { num: 22, name: 'Love', triumvirate: 'The Captivating Tale', upright: 'Auto: Search deck for any card, replace this card with it Upright; remove Love until end of Encounter', reversed: 'Replace Court Card and all Divination Cards with new draws; remove Love; gain 1 Trauma' }
+  ];
+
+  const courtCardDefs = [
+    { name: 'King', era: 'Royalty', effect: '+MAM to Leadership Checks', rulingPower: 'Arduous Judgment complete: +3 MAM' },
+    { name: 'Queen', era: 'Royalty', effect: '+MAM to one ally\'s Leadership', rulingPower: 'Collective Cycle complete: +3 MAM' },
+    { name: 'Knight', era: 'Heroes', effect: 'Reduce Physical Damage by MAM', rulingPower: 'Endless Battle complete: +3 MAM' },
+    { name: 'Dame', era: 'Heroes', effect: 'Reduce Magical Damage by MAM', rulingPower: 'Eternal Phase complete: +3 MAM' },
+    { name: 'Squire', era: 'Prodigies', effect: '+MAM to STR/DEX/CON Checks', rulingPower: 'Chiaroscuro complete: +3 MAM' },
+    { name: 'Damsel', era: 'Prodigies', effect: '+MAM to INT/WIS/CHA Checks', rulingPower: 'Love Card protection' }
+  ];
+
+  // Scaling Value by Tier (Table: Tier / MP / Intensity Tax / +X)
+  const divinationTierData = {
+    1: { mp: 3, tax: 0, scaling: 2 },
+    2: { mp: 6, tax: 0, scaling: 4 },
+    3: { mp: 15, tax: 0, scaling: 6 },
+    4: { mp: 25, tax: 0, scaling: 8 },
+    5: { mp: 36, tax: 1, scaling: 10 },
+    6: { mp: 45, tax: 2, scaling: 12 }
+  };
+
+  const divinationTier = ref(1);
+  const divinationScaling = computed(() => divinationTierData[divinationTier.value]?.scaling || 2);
+  // Slots: [{ cardNum, orientation: 'upright'|'reversed', expended: false }]
+  const divinationSlots = ref([]);
+  const divinationCourtCard = ref('');
+  const divinationDeckState = ref([]); // remaining card numbers after the draw
+
+  const divineTheFuture = () => {
+    const nums = divinationCardDefs.map(card => card.num);
+    const shuffled = [...nums].sort(() => Math.random() - 0.5);
+    divinationSlots.value = [
+      { cardNum: shuffled[0], orientation: 'upright', expended: false },
+      { cardNum: shuffled[1], orientation: 'reversed', expended: false },
+      { cardNum: shuffled[2], orientation: 'upright', expended: false }
+    ];
+    divinationDeckState.value = shuffled.slice(3);
+    const courts = courtCardDefs.map(card => card.name);
+    divinationCourtCard.value = courts[Math.floor(Math.random() * courts.length)];
+  };
+
+  const flipDivinationSlot = (index) => {
+    const slot = divinationSlots.value[index];
+    if (!slot) return;
+    slot.orientation = slot.orientation === 'upright' ? 'reversed' : 'upright';
+  };
+
+  const expendDivinationSlot = (index) => {
+    const slot = divinationSlots.value[index];
+    if (slot) slot.expended = !slot.expended;
+  };
+
+  // Replace a slot's card with the next card from the deck (same orientation),
+  // e.g. for Twilight/Mortal/Love card effects.
+  const redrawDivinationSlot = (index) => {
+    const slot = divinationSlots.value[index];
+    if (!slot || divinationDeckState.value.length === 0) return;
+    const next = divinationDeckState.value.shift();
+    divinationDeckState.value.push(slot.cardNum);
+    slot.cardNum = next;
+    slot.expended = false;
+  };
+
+  const clearDivination = () => {
+    divinationSlots.value = [];
+    divinationCourtCard.value = '';
+    divinationDeckState.value = [];
+  };
+
   // ==================== RELEASE MAGIC SYSTEM ====================
 
   // Card definitions for Release Magic Style
@@ -3683,6 +3826,10 @@ export const useSheetStore = defineStore('sheet',() => {
 
     // Endurance Die and attrition
     enduranceDieEnabled,
+    totalFocus,
+    totalFocusBroken,
+    spellModificationData,
+    useHeroicConviction,
     freakingOutToday,
     corruptionCount,
     burnoutLines,
@@ -3836,6 +3983,21 @@ export const useSheetStore = defineStore('sheet',() => {
     executeManeuver,
 
     // Release Magic
+    // Divination (Divine the Future)
+    divinationCardDefs,
+    courtCardDefs,
+    divinationTierData,
+    divinationTier,
+    divinationScaling,
+    divinationSlots,
+    divinationCourtCard,
+    divinationDeckState,
+    divineTheFuture,
+    flipDivinationSlot,
+    expendDivinationSlot,
+    redrawDivinationSlot,
+    clearDivination,
+
     releaseCardDefinitions,
     releaseMagicDeck,
     releaseMagicCollapsed,
