@@ -5,10 +5,10 @@ import { useSheetStore } from '@/stores/sheetStore';
 const sheet = useSheetStore();
 
 const categories = {
-  attack: { label: 'Attack Modifiers', keys: ['accurate', 'finesse', 'veilPiercing'] },
-  damage: { label: 'Damage Modifiers', keys: ['forceful', 'vicious'] },
-  both: { label: 'Attack & Damage', keys: ['massive'] },
-  special: { label: 'Special', keys: ['coupled', 'ensnaring', 'staggeringBlow', 'twoHanded'] }
+  trade: { label: 'Trade-Off (choose before rolling)', keys: ['accurate', 'massive'] },
+  trigger: { label: 'On Attack Roll 16+', keys: ['forceful', 'ensnaring', 'staggeringBlow'] },
+  attack: { label: 'Attack', keys: ['finesse'] },
+  special: { label: 'Special', keys: ['coupled', 'twoHanded', 'veilPiercing', 'vicious'] }
 };
 
 // Warning for two-handed + shield conflict
@@ -24,16 +24,11 @@ const hasTwoHandedConflict = computed(() => {
       <span class="quality-tag" v-for="q in sheet.activeWeaponQualities" :key="q">{{ q }}</span>
     </div>
 
-    <div class="modifiers-summary" v-if="sheet.weaponQualityAttackBonus !== 0 || sheet.weaponQualityDamageBonus !== 0">
-      <span v-if="sheet.weaponQualityAttackBonus !== 0" class="mod-badge attack">
-        Attack: {{ sheet.weaponQualityAttackBonus >= 0 ? '+' : '' }}{{ sheet.weaponQualityAttackBonus }}
-      </span>
-      <span v-if="sheet.weaponQualityDamageBonus !== 0" class="mod-badge damage">
-        Damage: {{ sheet.weaponQualityDamageBonus >= 0 ? '+' : '' }}{{ sheet.weaponQualityDamageBonus }}
-      </span>
-      <span v-if="sheet.weaponCritRange !== 20" class="mod-badge crit">
-        Crit: {{ sheet.weaponCritRange }}-20
-      </span>
+    <div class="modifiers-summary" v-if="sheet.soul_weapon.qualities.veilPiercing">
+      <label class="mod-badge crit veil-piercing-tracker">
+        <input type="checkbox" v-model="sheet.veilPiercingUsed" />
+        Veil-Piercing auto-hit {{ sheet.veilPiercingUsed ? 'used' : 'available' }} (1/Encounter)
+      </label>
     </div>
 
     <div v-if="hasTwoHandedConflict" class="conflict-warning">

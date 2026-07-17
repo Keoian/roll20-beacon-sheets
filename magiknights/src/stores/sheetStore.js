@@ -54,9 +54,19 @@ export const useSheetStore = defineStore('sheet',() => {
     return rollMode.value;
   });
 
+  // Roll mode for a specific roll context; conditions can force Disadvantage on
+  // attacks (Depleted, Drained, Distressed, Disoriented, Poisoned) or on skill
+  // checks (Distressed, Disoriented, Horrified) per the compendium.
+  const rollModeForContext = (context) => {
+    if (forcedDisadvantage.value) return 'disadvantage';
+    if (context === 'attack' && conditionDisadvantageOnAttacks.value) return 'disadvantage';
+    if (context === 'check' && conditionDisadvantageOnChecks.value) return 'disadvantage';
+    return rollMode.value;
+  };
+
   // Get the dice expression based on roll mode
-  const getRollDice = () => {
-    switch (effectiveRollMode.value) {
+  const getRollDice = (context) => {
+    switch (context ? rollModeForContext(context) : effectiveRollMode.value) {
       case 'advantage':
         return { formula: '2d20kh1', display: '2d20kh' };
       case 'disadvantage':
@@ -79,22 +89,18 @@ export const useSheetStore = defineStore('sheet',() => {
     paralyzed: false,
     prone: false,
     restrained: false,
+    disoriented: false,
+    unconscious: false,
     // Depletion conditions
     depleted: false,
     drained: false,
+    poisoned: false,
     silenced: false,
     soulSiphoned1: false,
     soulSiphoned2: false,
     soulSiphoned3: false,
-    soulTainted: false,
-    // Other conditions
-    blinded: false,
-    charmed: false,
-    frightened: false,
-    incapacitated: false,
-    invisible: false,
-    poisoned: false,
-    stunned: false
+    soulSiphoned4: false,
+    soulTainted: false
   });
 
   // Get list of active conditions
@@ -104,17 +110,22 @@ export const useSheetStore = defineStore('sheet',() => {
       .map(([name, _]) => name);
   });
 
-  // Check if any condition grants disadvantage on attacks
+  // Conditions that impose Disadvantage on your Attack rolls per the compendium:
+  // Depleted, Drained, Distressed, Disoriented, Poisoned
   const conditionDisadvantageOnAttacks = computed(() => {
-    return conditions.value.prone ||
-           conditions.value.restrained ||
-           conditions.value.blinded ||
-           conditions.value.frightened ||
+    return conditions.value.depleted ||
+           conditions.value.drained ||
+           conditions.value.distressed ||
+           conditions.value.disoriented ||
            conditions.value.poisoned;
   });
 
-  // Check if distressed (applies -1 to checks)
-  const distressedPenalty = computed(() => conditions.value.distressed ? -1 : 0);
+  // Conditions that impose Disadvantage on Skill Checks: Distressed, Disoriented, Horrified
+  const conditionDisadvantageOnChecks = computed(() => {
+    return conditions.value.distressed ||
+           conditions.value.disoriented ||
+           conditions.value.horrified;
+  });
 
   // abilityScores
   const strength = ref(10);
@@ -735,54 +746,38 @@ export const useSheetStore = defineStore('sheet',() => {
     damage: ref(''),
     damageType: ref('physical'), // 'physical', 'magical', or 'true'
     qualities: ref({
-      accurate: false,      // +1 to attack rolls
-      coupled: false,       // Can be used with another weapon (informational)
-      ensnaring: false,     // Grapple on hit (informational)
-      finesse: false,       // Can use DEX instead of STR for attack/damage
-      forceful: false,      // +1 to damage rolls
-      massive: false,       // -2 to attack, +4 to damage
-      staggeringBlow: false, // Knockback effect (informational)
-      twoHanded: false,     // Requires both hands (informational)
-      veilPiercing: false,  // Critical hit on 16+ (instead of only 20)
-      vicious: false        // On crit, maximize duplicated damage dice
+      accurate: false,
+      coupled: false,
+      ensnaring: false,
+      finesse: false,
+      forceful: false,
+      massive: false,
+      staggeringBlow: false,
+      twoHanded: false,
+      veilPiercing: false,
+      vicious: false
     }),
     collapsed: ref(true)
   };
 
-  // Weapon quality definitions for UI
+  // Weapon quality definitions for UI, per the compendium.
+  // 'trade' qualities are per-roll choices made before rolling; 'trigger'
+  // qualities fire on an Attack Roll of 16+. Neither applies a persistent bonus.
   const weaponQualityDefs = {
-    accurate: { name: 'Accurate', effect: '+1 to attack rolls', category: 'attack' },
-    coupled: { name: 'Coupled', effect: 'Can be used with another weapon', category: 'special' },
-    ensnaring: { name: 'Ensnaring', effect: 'Grapple on hit', category: 'special' },
-    finesse: { name: 'Finesse', effect: 'Use DEX instead of STR for attack/damage', category: 'attack' },
-    forceful: { name: 'Forceful', effect: '+1 to damage rolls', category: 'damage' },
-    massive: { name: 'Massive', effect: '-2 to attack, +4 to damage', category: 'both' },
-    staggeringBlow: { name: 'Staggering Blow', effect: 'Knockback effect on hit', category: 'special' },
-    twoHanded: { name: 'Two-Handed', effect: 'Requires both hands', category: 'special' },
-    veilPiercing: { name: 'Veil-Piercing', effect: 'Critical hit on 16+', category: 'attack' },
-    vicious: { name: 'Vicious', effect: 'On crit, maximize duplicated dice', category: 'damage' }
+    accurate: { name: 'Accurate', effect: 'Before rolling: -2 damage for +1 Attack, OR -4 damage for +2 Attack', category: 'trade' },
+    coupled: { name: 'Coupled', effect: 'Free Action: Split into Primary + Secondary. Bonus Action secondary attack', category: 'special' },
+    ensnaring: { name: 'Ensnaring', effect: 'On Attack Roll 16+: Target Restrained. Cannot affect Large+ or Adversary+', category: 'trigger' },
+    finesse: { name: 'Finesse', effect: 'Use DEX instead of STR for Attack and Damage', category: 'attack' },
+    forceful: { name: 'Forceful', effect: 'On Attack Roll 16+: Add extra 1d6 damage', category: 'trigger' },
+    massive: { name: 'Massive', effect: 'Before rolling: -1 Attack for +2 damage, OR -2 Attack for +4 damage', category: 'trade' },
+    staggeringBlow: { name: 'Staggering Blow', effect: 'On Attack Roll 16+: Knock target 10ft. Cannot affect Large+ or Adversary+', category: 'trigger' },
+    twoHanded: { name: 'Two-Handed', effect: 'Requires two hands. Cannot use Shield or Light items', category: 'special' },
+    veilPiercing: { name: 'Veil-Piercing', effect: '1/Combat Encounter: Instead of rolling, automatically hit', category: 'special' },
+    vicious: { name: 'Vicious', effect: 'On Critical Hit: Duplicated dice deal maximum damage', category: 'special' }
   };
 
-  // Computed: weapon quality attack bonus
-  const weaponQualityAttackBonus = computed(() => {
-    let bonus = 0;
-    if (soul_weapon.qualities.value.accurate) bonus += 1;
-    if (soul_weapon.qualities.value.massive) bonus -= 2;
-    return bonus;
-  });
-
-  // Computed: weapon quality damage bonus
-  const weaponQualityDamageBonus = computed(() => {
-    let bonus = 0;
-    if (soul_weapon.qualities.value.forceful) bonus += 1;
-    if (soul_weapon.qualities.value.massive) bonus += 4;
-    return bonus;
-  });
-
-  // Computed: critical hit range (default 20, veil-piercing makes it 16)
-  const weaponCritRange = computed(() => {
-    return soul_weapon.qualities.value.veilPiercing ? 16 : 20;
-  });
+  // Tracks the 1/Combat Encounter use of Veil-Piercing's automatic hit
+  const veilPiercingUsed = ref(false);
 
   // Computed: active qualities list for display
   const activeWeaponQualities = computed(() => {
@@ -792,58 +787,51 @@ export const useSheetStore = defineStore('sheet',() => {
   });
 
   // ==================== SOUL GUN DATA ====================
+  // Soul Guns (Advanced Soul Weapons) require Combat Form X: Regulation.
+  // They use a Firing Pool: roll ROF d8s + DEX + Proficiency vs Armor.
+  // Each "8" rolled is a Direct Hit (+Proficiency damage).
+  const gunTypeData = {
+    hdg: { name: 'Handgun', eRange: 20, damage: '1d6', rf: 2, md: 3, special: 'Gun Style choice' },
+    smg: { name: 'Submachine Gun', eRange: 30, damage: '1d6', rf: 2, md: 4, special: 'Gun Style choice' },
+    asr: { name: 'Assault Rifle', eRange: 40, damage: '1d8', rf: 2, md: 4, special: 'Covering Fire: After Mag Dump hit, target\'s first attack has Disadvantage' },
+    dmr: { name: 'Designated Marksman Rifle', eRange: 80, damage: '1d10', rf: 2, md: 3, special: 'Sighted Rifle: Rapid Fire at 40ft+, reroll one die. Prone Stability' },
+    stg: { name: 'Shotgun', eRange: 15, damage: '1d12', rf: 2, md: 3, special: 'Firing Spread: Damage to Horde/Swarm Part also hits second Part or adjacent target' },
+    lmg: { name: 'Light Machine Gun', eRange: 50, damage: '1d10', rf: 2, md: 5, special: 'Collateral Damage. Bulky: Not Prone = remove highest die. May use STR. Prone Stability' },
+    sda: { name: 'Sidearm', eRange: 20, damage: '1d4', rf: 2, md: 0, special: 'Reactionary Shot: Reaction when enemy within 20ft, stow Primary, draw Sidearm, attack' }
+  };
+
+  // Gun Styles: only Handguns and SMGs have style choices
+  const gunStyleData = {
+    akimbo: { name: 'Akimbo', applies: 'hdg', effect: 'MD Rate of Fire +1. Handgun becomes Two-Handed' },
+    aegis: { name: 'Aegis/Musketeer', applies: 'hdg', effect: 'Shield or Light Weapon instead of Sidearm + Bonus Action attack' },
+    fastReload: { name: 'Fast Reload', applies: 'hdg', effect: 'Reload as Bonus Action. Other hand must be empty or Light item' },
+    mobile: { name: 'Mobile', applies: 'smg', effect: 'Move 10ft before/after attack. No Provoke after Mag Dump' },
+    hailOfBullets: { name: 'Hail of Bullets', applies: 'smg', effect: 'Mag Dump at 15ft or closer: reroll one die (keep result)' }
+  };
+
   const soul_gun = {
     name: ref(''),
-    range: ref(''),
-    damage: ref(''),
+    gunType: ref('hdg'),
+    gunStyle: ref(''),
     damageType: ref('physical'), // 'physical', 'magical', or 'true'
-    qualities: ref({
-      accurate: false,      // +1 to attack rolls
-      longRange: false,     // Double effective range
-      rapidFire: false,     // Can attack twice with -2 penalty
-      scatter: false,       // +2 damage at close range (5ft)
-      silenced: false,      // Does not reveal position (informational)
-      veilPiercing: false,  // Critical hit on 16+ (instead of only 20)
-      vicious: false        // On crit, maximize duplicated damage dice
-    }),
+    firingPoolBonus: ref(0),   // flat bonus to Firing Pool total (e.g. Standard Scope/Magazine)
+    hasReloaded: ref(true),    // false after a Mag Dump until the character Reloads
+    isAiming: ref(false),      // Bonus Action: +1 to one die in the Firing Pool
     collapsed: ref(true)
   };
 
-  // Gun quality definitions for UI
-  const gunQualityDefs = {
-    accurate: { name: 'Accurate', effect: '+1 to attack rolls', category: 'attack' },
-    longRange: { name: 'Long Range', effect: 'Double effective range', category: 'special' },
-    rapidFire: { name: 'Rapid Fire', effect: 'Can attack twice with -2 penalty', category: 'attack' },
-    scatter: { name: 'Scatter', effect: '+2 damage at close range (5ft)', category: 'damage' },
-    silenced: { name: 'Silenced', effect: 'Does not reveal position', category: 'special' },
-    veilPiercing: { name: 'Veil-Piercing', effect: 'Critical hit on 16+', category: 'attack' },
-    vicious: { name: 'Vicious', effect: 'On crit, maximize duplicated dice', category: 'damage' }
-  };
+  // Gun Attachments (Scopes, Magazines, Rail/Underbarrel, Muzzles) - each takes 1 Rune Slot
+  // Rows: { name, type, effect }
+  // (registered below with the other repeating sections)
 
-  // Computed: gun quality attack bonus
-  const gunQualityAttackBonus = computed(() => {
-    let bonus = 0;
-    if (soul_gun.qualities.value.accurate) bonus += 1;
-    return bonus;
-  });
+  // Computed: stats for the currently selected gun type
+  const gunTypeStats = computed(() => gunTypeData[soul_gun.gunType.value] || gunTypeData.hdg);
 
-  // Computed: gun quality damage bonus
-  const gunQualityDamageBonus = computed(() => {
-    let bonus = 0;
-    // Scatter bonus is situational (close range), handled separately
-    return bonus;
-  });
-
-  // Computed: gun critical hit range (default 20, veil-piercing makes it 16)
-  const gunCritRange = computed(() => {
-    return soul_gun.qualities.value.veilPiercing ? 16 : 20;
-  });
-
-  // Computed: active gun qualities list for display
-  const activeGunQualities = computed(() => {
-    return Object.entries(soul_gun.qualities.value)
-      .filter(([key, val]) => val)
-      .map(([key]) => gunQualityDefs[key]?.name || key);
+  // Computed: gun styles available for the current gun type
+  const availableGunStyles = computed(() => {
+    return Object.entries(gunStyleData)
+      .filter(([, style]) => style.applies === soul_gun.gunType.value)
+      .map(([key, style]) => ({ key, ...style }));
   });
 
   // ==================== MAGICAL IMPLEMENT DATA ====================
@@ -851,22 +839,28 @@ export const useSheetStore = defineStore('sheet',() => {
     name: ref(''),
     description: ref(''),
     qualities: ref({
-      manaAttunement: false,    // MP = MCO * 3 instead of MCO * 2
-      spellFocus: false,        // +1 to spell attack rolls
-      channeling: false,        // +1 to spell DC
-      quickCast: false,         // Can cast one Tier I spell as bonus action per rest
-      wardingFocus: false       // +1 to magical damage resistance
+      cardConductor: false,
+      embolden: false,
+      light: false,
+      manaAttunement: false,
+      manaConduit: false,
+      radiance: false,
+      twoHanded: false,
+      warding: false
     }),
     collapsed: ref(true)
   };
 
-  // Implement quality definitions for UI
+  // Implement quality definitions for UI, per the compendium
   const implementQualityDefs = {
-    manaAttunement: { name: 'Mana Attunement', effect: 'MP = MCO × 3 (instead of × 2)', category: 'mana' },
-    spellFocus: { name: 'Spell Focus', effect: '+1 to spell attack rolls', category: 'attack' },
-    channeling: { name: 'Channeling', effect: '+1 to Spell DC', category: 'dc' },
-    quickCast: { name: 'Quick Cast', effect: 'Cast one Tier I spell as bonus action per rest', category: 'special' },
-    wardingFocus: { name: 'Warding Focus', effect: '+1 to magical damage resistance', category: 'defense' }
+    cardConductor: { name: 'Card Conductor', effect: 'Required for Divination Spell Path or Release Magic Style', category: 'special' },
+    embolden: { name: 'Embolden', effect: 'Spell damage +MK Level. Multi-target: choose one target for bonus', category: 'damage' },
+    light: { name: 'Light', effect: 'One hand, does not count toward weapon limit', category: 'special' },
+    manaAttunement: { name: 'Mana Attunement', effect: 'MP = Mana Coefficient × 3 (instead of × 2)', category: 'mana' },
+    manaConduit: { name: 'Mana Conduit', effect: '1/Sleep Phase, Bonus Action: Next spell costs -1 Tier MP', category: 'mana' },
+    radiance: { name: 'Radiance', effect: 'Healing spells: +1+Level HP. AoE: halved (min 1)', category: 'healing' },
+    twoHanded: { name: 'Two-Handed', effect: 'Requires two hands. Cannot use Shield or Light items', category: 'special' },
+    warding: { name: 'Warding', effect: 'Reduce spell damage taken by 1/2 Level (min 1)', category: 'defense' }
   };
 
   // Computed: check if Mana Attunement is active (for MP calculation)
@@ -874,14 +868,27 @@ export const useSheetStore = defineStore('sheet',() => {
     return magical_implement.qualities.value.manaAttunement;
   });
 
-  // Computed: implement quality spell attack bonus
-  const implementSpellAttackBonus = computed(() => {
-    return magical_implement.qualities.value.spellFocus ? 1 : 0;
+  // Computed: check if Embolden is active
+  const hasEmbolden = computed(() => {
+    return magical_implement.qualities.value.embolden;
   });
 
-  // Computed: implement quality spell DC bonus
-  const implementSpellDCBonus = computed(() => {
-    return magical_implement.qualities.value.channeling ? 1 : 0;
+  // Tracks the 1/Sleep Phase use of Mana Conduit
+  const manaConduitUsed = ref(false);
+
+  // Embolden: spell damage increased by Magi-Knight Level
+  const emboldenDamageBonus = computed(() => {
+    return magical_implement.qualities.value.embolden ? level.value : 0;
+  });
+
+  // Radiance: healing spells recover +1 + Level HP
+  const radianceHealBonus = computed(() => {
+    return magical_implement.qualities.value.radiance ? 1 + level.value : 0;
+  });
+
+  // Warding: reduce spell damage taken by 1/2 Level (rounded down, min 1)
+  const wardingReduction = computed(() => {
+    return magical_implement.qualities.value.warding ? Math.max(1, Math.floor(level.value / 2)) : 0;
   });
 
   // Computed: active implement qualities list for display
@@ -1100,6 +1107,19 @@ export const useSheetStore = defineStore('sheet',() => {
       },
       rows: ref([])
     },
+    gunAttachments: {
+      template: {
+        name: '',
+        type: '', // scope, magazine, rail, muzzle
+        effect: '',
+        collapsed: true
+      },
+      addItem(item){
+        const newItem = {...this.template,...item};
+        this.rows.value.push(newItem);
+      },
+      rows: ref([])
+    },
     spells: {
       template: {
         name: '',
@@ -1155,6 +1175,7 @@ export const useSheetStore = defineStore('sheet',() => {
         name: '',
         points: 0,
         bond_ability: '',
+        heartStage: 'neutral', // threatening -> hostile -> cold -> neutral -> warm -> friendly -> sympathetic
         collapsed: false
       },
       addItem(item){
@@ -1433,25 +1454,24 @@ export const useSheetStore = defineStore('sheet',() => {
   function dehydrateSoulGun(soulGun) {
     return {
       name: soulGun.name.value,
-      range: soulGun.range.value,
-      damage: soulGun.damage.value,
+      gunType: soulGun.gunType.value,
+      gunStyle: soulGun.gunStyle.value,
       damageType: soulGun.damageType.value,
-      qualities: { ...soulGun.qualities.value },
+      firingPoolBonus: soulGun.firingPoolBonus.value,
+      hasReloaded: soulGun.hasReloaded.value,
+      isAiming: soulGun.isAiming.value,
       collapsed: soulGun.collapsed.value,
     };
   }
 
   function hydrateSoulGun(soulGun, hydrateData = {}) {
     soulGun.name.value = hydrateData.name ?? soulGun.name.value;
-    soulGun.range.value = hydrateData.range ?? soulGun.range.value;
-    soulGun.damage.value = hydrateData.damage ?? soulGun.damage.value;
+    soulGun.gunType.value = hydrateData.gunType ?? soulGun.gunType.value;
+    soulGun.gunStyle.value = hydrateData.gunStyle ?? soulGun.gunStyle.value;
     soulGun.damageType.value = hydrateData.damageType ?? soulGun.damageType.value;
-    // Handle qualities - merge with defaults if it's an object, ignore if it's a string (old format)
-    if (hydrateData.qualities && typeof hydrateData.qualities === 'object') {
-      Object.keys(soulGun.qualities.value).forEach(key => {
-        soulGun.qualities.value[key] = hydrateData.qualities[key] ?? soulGun.qualities.value[key];
-      });
-    }
+    soulGun.firingPoolBonus.value = hydrateData.firingPoolBonus ?? soulGun.firingPoolBonus.value;
+    soulGun.hasReloaded.value = hydrateData.hasReloaded ?? soulGun.hasReloaded.value;
+    soulGun.isAiming.value = hydrateData.isAiming ?? soulGun.isAiming.value;
     soulGun.collapsed.value = hydrateData.collapsed ?? soulGun.collapsed.value;
   }
 
@@ -1545,8 +1565,10 @@ export const useSheetStore = defineStore('sheet',() => {
       fate: dehydrateFate(fate),
       armor_weave: dehydrateArmorWeave(armor_weave),
       soul_weapon: dehydrateSoulWeapon(soul_weapon),
+      veilPiercingUsed: veilPiercingUsed.value,
       soul_gun: dehydrateSoulGun(soul_gun),
       magical_implement: dehydrateMagicalImplement(magical_implement),
+      manaConduitUsed: manaConduitUsed.value,
       herald: dehydrateHerald(herald),
       student_damage_override: student_damage_override.value,
       student_armor_override: student_armor_override.value,
@@ -1698,8 +1720,10 @@ export const useSheetStore = defineStore('sheet',() => {
     hydrateFate(fate, hydrateStore.fate);
     hydrateArmorWeave(armor_weave, hydrateStore.armor_weave);
     hydrateSoulWeapon(soul_weapon, hydrateStore.soul_weapon);
+    veilPiercingUsed.value = hydrateStore.veilPiercingUsed ?? veilPiercingUsed.value;
     hydrateSoulGun(soul_gun, hydrateStore.soul_gun);
     hydrateMagicalImplement(magical_implement, hydrateStore.magical_implement);
+    manaConduitUsed.value = hydrateStore.manaConduitUsed ?? manaConduitUsed.value;
     hydrateHerald(herald, hydrateStore.herald);
 
     // NPC hydration
@@ -1752,9 +1776,10 @@ export const useSheetStore = defineStore('sheet',() => {
       rollToResist = proficiency.value;
     }
 
-    const dice = getRollDice();
-    const rollModeLabel = effectiveRollMode.value !== 'normal'
-      ? ` (${effectiveRollMode.value === 'advantage' ? 'Adv' : 'Disadv'})`
+    const mode = rollModeForContext('check');
+    const dice = getRollDice('check');
+    const rollModeLabel = mode !== 'normal'
+      ? ` (${mode === 'advantage' ? 'Adv' : 'Disadv'})`
       : '';
 
     const rollObj = {
@@ -1764,8 +1789,7 @@ export const useSheetStore = defineStore('sheet',() => {
       components: [
         {label: dice.display, formula: dice.formula, alwaysShowInBreakdown: true},
         {label:'Mod', value:abilityScores[name].mod.value,alwaysShowInBreakdown: true},
-        {label: 'Roll to Resist',value: rollToResist,alwaysShowInBreakdown: true},
-        {label: 'Distressed', value: distressedPenalty.value, alwaysShowInBreakdown: distressedPenalty.value !== 0}
+        {label: 'Roll to Resist',value: rollToResist,alwaysShowInBreakdown: true}
       ]
     };
     rollToChat({rollObj});
@@ -1776,9 +1800,10 @@ export const useSheetStore = defineStore('sheet',() => {
     const formattedTitle = toTitleCase(name.replace(/_/g, ' '));
     const skillOverrideValue = skills[name].overrideValue.value;
 
-    const dice = getRollDice();
-    const rollModeLabel = effectiveRollMode.value !== 'normal'
-      ? ` (${effectiveRollMode.value === 'advantage' ? 'Adv' : 'Disadv'})`
+    const mode = rollModeForContext('check');
+    const dice = getRollDice('check');
+    const rollModeLabel = mode !== 'normal'
+      ? ` (${mode === 'advantage' ? 'Adv' : 'Disadv'})`
       : '';
 
     if (skillOverrideValue !== '' && skillOverrideValue !== undefined){
@@ -1788,8 +1813,7 @@ export const useSheetStore = defineStore('sheet',() => {
         characterName: metaStore.name,
         components: [
           {label: dice.display, formula: dice.formula, alwaysShowInBreakdown: true},
-          {label:'Skill Value Override', value:Number(skillOverrideValue) || 0,alwaysShowInBreakdown: true},
-          {label: 'Distressed', value: distressedPenalty.value, alwaysShowInBreakdown: distressedPenalty.value !== 0}
+          {label:'Skill Value Override', value:Number(skillOverrideValue) || 0,alwaysShowInBreakdown: true}
         ]
       };
       rollToChat({rollObj});
@@ -1800,8 +1824,7 @@ export const useSheetStore = defineStore('sheet',() => {
         characterName: metaStore.name,
         components: [
           {label: dice.display, formula: dice.formula, alwaysShowInBreakdown: true},
-          {label:'Mod', value:abilityScores[abilityName].mod.value,alwaysShowInBreakdown: true},
-          {label: 'Distressed', value: distressedPenalty.value, alwaysShowInBreakdown: distressedPenalty.value !== 0}
+          {label:'Mod', value:abilityScores[abilityName].mod.value,alwaysShowInBreakdown: true}
         ]
       };
       if(skills[name].proficiency.value){
@@ -1814,9 +1837,9 @@ export const useSheetStore = defineStore('sheet',() => {
   const rollWeapon = async (item,tier) => {
     let abMod = Number(knight_attack.value) || 0;
 
-    const dice = getRollDice();
-    const rollModeLabel = effectiveRollMode.value !== 'normal'
-      ? ` (${effectiveRollMode.value === 'advantage' ? 'Adv' : 'Disadv'})`
+    const dice = getRollDice('attack');
+    const rollModeLabel = rollModeForContext('attack') !== 'normal'
+      ? ` (${rollModeForContext('attack') === 'advantage' ? 'Adv' : 'Disadv'})`
       : '';
 
     const attackPromise = getRollResults(
@@ -1895,9 +1918,9 @@ export const useSheetStore = defineStore('sheet',() => {
   const rollSpell = async (item,tier) => {
     const abMod = abilityScores[mam.value]?.mod.value || 0;
 
-    const dice = getRollDice();
-    const rollModeLabel = effectiveRollMode.value !== 'normal'
-      ? ` (${effectiveRollMode.value === 'advantage' ? 'Adv' : 'Disadv'})`
+    const dice = getRollDice('attack');
+    const rollModeLabel = rollModeForContext('attack') !== 'normal'
+      ? ` (${rollModeForContext('attack') === 'advantage' ? 'Adv' : 'Disadv'})`
       : '';
 
     const attackPromise = getRollResults(
@@ -1992,12 +2015,6 @@ export const useSheetStore = defineStore('sheet',() => {
       {label:'Attack', value:Number(knight_attack.value),alwaysShowInBreakdown: true}
     ];
 
-    // Add weapon quality bonus if any
-    const qualityBonus = weaponQualityAttackBonus.value;
-    if (qualityBonus !== 0) {
-      components.push({label: 'Qualities', value: qualityBonus, alwaysShowInBreakdown: true});
-    }
-
     const rollObj = {
       title: 'Attack Roll',
       subtitle: `Magi-Knight Persona${rollModeLabel}`,
@@ -2006,9 +2023,14 @@ export const useSheetStore = defineStore('sheet',() => {
       keyValues: {}
     };
 
-    // Show crit range if modified
-    if (weaponCritRange.value !== 20) {
-      rollObj.keyValues['Crit Range'] = `${weaponCritRange.value}-20`;
+    // Remind of active trade-off/triggered qualities (chosen per-roll, not auto-applied)
+    const tradeQualities = activeWeaponQualities.value.filter(name => ['Accurate', 'Massive'].includes(name));
+    if (tradeQualities.length) {
+      rollObj.keyValues['Trade-Off Qualities'] = tradeQualities.join(', ');
+    }
+    const triggerQualities = activeWeaponQualities.value.filter(name => ['Forceful', 'Ensnaring', 'Staggering Blow'].includes(name));
+    if (triggerQualities.length) {
+      rollObj.keyValues['On 16+'] = triggerQualities.join(', ');
     }
 
     rollToChat({rollObj});
@@ -2081,12 +2103,6 @@ export const useSheetStore = defineStore('sheet',() => {
       { label: 'Damage', formula: notationString, rollFormula: true, alwaysShowInBreakdown: true }
     ];
 
-    // Add weapon quality damage bonus if any
-    const qualityDmgBonus = weaponQualityDamageBonus.value;
-    if (qualityDmgBonus !== 0) {
-      rollComponents.push({ label: 'Qualities', value: qualityDmgBonus, alwaysShowInBreakdown: true });
-    }
-
     // Use getRollResults with formula property to support complex dice expressions
     const { total, components } = await getRollResults(rollComponents);
 
@@ -2116,65 +2132,73 @@ export const useSheetStore = defineStore('sheet',() => {
   };
 
   // ==================== SOUL GUN ROLL FUNCTIONS ====================
+  // Open Fire: roll the Firing Pool (RF or MD d8s) + DEX + Proficiency vs Armor.
+  // Each "8" rolled is a Direct Hit adding +Proficiency damage.
 
-  const rollGunAttack = () => {
-    const dice = getRollDice();
-    const rollModeLabel = effectiveRollMode.value !== 'normal'
-      ? ` (${effectiveRollMode.value === 'advantage' ? 'Adv' : 'Disadv'})`
-      : '';
+  const rollGunAttack = async (fireMode = 'rf') => {
+    const stats = gunTypeStats.value;
+    let poolSize = fireMode === 'md' ? stats.md : stats.rf;
+    if (fireMode === 'md' && soul_gun.gunStyle.value === 'akimbo') poolSize += 1;
+    if (poolSize <= 0) return; // Sidearm has no Mag Dump
 
-    const components = [
-      {label: dice.display, formula: dice.formula, alwaysShowInBreakdown: true},
-      {label:'Attack', value:Number(knight_attack.value),alwaysShowInBreakdown: true}
+    const dexMod = abilityScores.dexterity.mod.value;
+    const prof = Number(proficiency.value) || 0;
+    const poolBonus = Number(soul_gun.firingPoolBonus.value) || 0;
+
+    const rollComponents = [
+      { label: `Firing Pool: ${poolSize}d8`, formula: `${poolSize}d8`, alwaysShowInBreakdown: true },
+      { label: 'DEX', value: dexMod, alwaysShowInBreakdown: true },
+      { label: 'Prof', value: prof, alwaysShowInBreakdown: true }
     ];
-
-    // Add gun quality bonus if any
-    const qualityBonus = gunQualityAttackBonus.value;
-    if (qualityBonus !== 0) {
-      components.push({label: 'Qualities', value: qualityBonus, alwaysShowInBreakdown: true});
+    if (poolBonus !== 0) {
+      rollComponents.push({ label: 'Attachments', value: poolBonus, alwaysShowInBreakdown: true });
     }
 
+    const { total, components } = await getRollResults(rollComponents);
+    const poolDice = components[0]?.results?.dice || [];
+    const directHits = poolDice.filter(d => d === 8).length;
+
+    const modeName = fireMode === 'md' ? 'Mag Dump' : 'Rapid Fire';
     const rollObj = {
-      title: 'Soul Gun Attack',
-      subtitle: `Magi-Knight Persona${rollModeLabel}`,
+      title: `Open Fire: ${modeName}`,
+      subtitle: `${stats.name}${soul_gun.name.value ? ` - ${soul_gun.name.value}` : ''}`,
       characterName: metaStore.name,
       components: components,
-      keyValues: {}
+      total: Number(total),
+      keyValues: {
+        'vs': 'Armor',
+        'E-Range': `${stats.eRange} ft (max ${stats.eRange * 2} ft)`,
+        'Damage': stats.damage
+      }
     };
-
-    // Show crit range if modified
-    if (gunCritRange.value !== 20) {
-      rollObj.keyValues['Crit Range'] = `${gunCritRange.value}-20`;
+    if (directHits > 0) {
+      rollObj.keyValues['Direct Hits'] = `${directHits} (+${directHits * prof} damage)`;
+    }
+    if (soul_gun.isAiming.value) {
+      rollObj.keyValues['Aiming'] = '+1 to one die in the Firing Pool';
+      soul_gun.isAiming.value = false;
+    }
+    if (fireMode === 'md') {
+      soul_gun.hasReloaded.value = false;
+      rollObj.keyValues['Reload'] = 'Required before next Mag Dump (Standard Action)';
     }
 
-    // Show range
-    if (soul_gun.range.value) {
-      rollObj.keyValues['Range'] = soul_gun.range.value;
-    }
+    rollToChat({ rollObj });
+    return total;
+  };
 
-    rollToChat({rollObj});
+  const reloadGun = () => {
+    soul_gun.hasReloaded.value = true;
   };
 
   const rollGunDamage = async () => {
-    let notationString = String(soul_gun.damage.value);
+    const stats = gunTypeStats.value;
+    const notationString = String(stats.damage);
 
-    // Validate that there's a dice expression to roll
-    if (!notationString || !notationString.match(/\d*[dD]\d+/)) {
-      return;
-    }
-
-    // Build components array for the roll
     const rollComponents = [
       { label: 'Damage', formula: notationString, rollFormula: true, alwaysShowInBreakdown: true }
     ];
 
-    // Add gun quality damage bonus if any
-    const qualityDmgBonus = gunQualityDamageBonus.value;
-    if (qualityDmgBonus !== 0) {
-      rollComponents.push({ label: 'Qualities', value: qualityDmgBonus, alwaysShowInBreakdown: true });
-    }
-
-    // Use getRollResults with formula property to support complex dice expressions
     const { total, components } = await getRollResults(rollComponents);
 
     // Mark all components to show in breakdown
@@ -2188,19 +2212,15 @@ export const useSheetStore = defineStore('sheet',() => {
     // Format the roll for chat
     const rollObj = {
       title: 'Soul Gun Damage',
-      subtitle: `Magi-Knight Persona - ${dmgType}`,
+      subtitle: `${stats.name} - ${dmgType}`,
       characterName: metaStore.name,
       components: components,
       total: Number(total),
       keyValues: {
-        'Damage Type': dmgType
+        'Damage Type': dmgType,
+        'Direct Hits': `+${Number(proficiency.value) || 0} damage each`
       }
     };
-
-    // Show scatter bonus reminder if active
-    if (soul_gun.qualities.value.scatter) {
-      rollObj.keyValues['Scatter'] = '+2 damage at 5ft';
-    }
 
     rollToChat({ rollObj });
 
@@ -2917,13 +2937,14 @@ export const useSheetStore = defineStore('sheet',() => {
     // Roll mode (advantage/disadvantage)
     rollMode,
     effectiveRollMode,
+    rollModeForContext,
     forcedDisadvantage,
 
     // Conditions
     conditions,
     activeConditions,
     conditionDisadvantageOnAttacks,
-    distressedPenalty,
+    conditionDisadvantageOnChecks,
 
     hp,
     mp,
@@ -2948,23 +2969,24 @@ export const useSheetStore = defineStore('sheet',() => {
     armor_weave,
     soul_weapon,
     weaponQualityDefs,
-    weaponQualityAttackBonus,
-    weaponQualityDamageBonus,
-    weaponCritRange,
+    veilPiercingUsed,
     activeWeaponQualities,
     soul_gun,
-    gunQualityDefs,
-    gunQualityAttackBonus,
-    gunQualityDamageBonus,
-    gunCritRange,
-    activeGunQualities,
+    gunTypeData,
+    gunStyleData,
+    gunTypeStats,
+    availableGunStyles,
     rollGunAttack,
     rollGunDamage,
+    reloadGun,
     magical_implement,
     implementQualityDefs,
     hasManaAttunement,
-    implementSpellAttackBonus,
-    implementSpellDCBonus,
+    hasEmbolden,
+    manaConduitUsed,
+    emboldenDamageBonus,
+    radianceHealBonus,
+    wardingReduction,
     activeImplementQualities,
     damageTypeLabels,
     gloom_gems:gloom,

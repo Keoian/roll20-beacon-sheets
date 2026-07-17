@@ -1,188 +1,188 @@
 <script setup>
 import { computed } from 'vue';
 import { useSheetStore } from '@/stores/sheetStore';
+import RepeatingSection from './RepeatingSection.vue';
+import RepeatingItem from './RepeatingItem.vue';
 
 const sheet = useSheetStore();
 
-const categories = {
-  attack: { label: 'Attack Modifiers', keys: ['accurate', 'rapidFire', 'veilPiercing'] },
-  damage: { label: 'Damage Modifiers', keys: ['scatter', 'vicious'] },
-  special: { label: 'Special', keys: ['longRange', 'silenced'] }
-};
+const attachmentTypes = ['scope', 'magazine', 'rail', 'muzzle'];
+
+const stats = computed(() => sheet.gunTypeStats);
+const styles = computed(() => sheet.availableGunStyles);
 </script>
 
 <template>
-  <div class="gun-qualities-selector">
-    <div class="qualities-summary" v-if="sheet.activeGunQualities.length > 0">
-      <span class="summary-label">Active:</span>
-      <span class="quality-tag" v-for="q in sheet.activeGunQualities" :key="q">{{ q }}</span>
+  <div class="gun-config-selector">
+    <!-- Gun Type -->
+    <div class="gun-row">
+      <label class="field-label" for="gun-type-select">Gun Type</label>
+      <select id="gun-type-select" class="input-field" v-model="sheet.soul_gun.gunType">
+        <option v-for="(type, key) in sheet.gunTypeData" :key="key" :value="key">
+          {{ type.name }} ({{ key.toUpperCase() }})
+        </option>
+      </select>
     </div>
 
-    <div class="modifiers-summary" v-if="sheet.gunQualityAttackBonus !== 0 || sheet.gunQualityDamageBonus !== 0">
-      <span v-if="sheet.gunQualityAttackBonus !== 0" class="mod-badge attack">
-        Attack: {{ sheet.gunQualityAttackBonus >= 0 ? '+' : '' }}{{ sheet.gunQualityAttackBonus }}
-      </span>
-      <span v-if="sheet.gunQualityDamageBonus !== 0" class="mod-badge damage">
-        Damage: {{ sheet.gunQualityDamageBonus >= 0 ? '+' : '' }}{{ sheet.gunQualityDamageBonus }}
-      </span>
-      <span v-if="sheet.gunCritRange !== 20" class="mod-badge crit">
-        Crit: {{ sheet.gunCritRange }}-20
-      </span>
+    <!-- Gun type stats -->
+    <div class="gun-stats">
+      <span class="stat-badge">E-Range: {{ stats.eRange }}ft</span>
+      <span class="stat-badge">Damage: {{ stats.damage }}</span>
+      <span class="stat-badge">ROF: {{ stats.rf }}/{{ stats.md || '—' }}</span>
+    </div>
+    <div class="gun-special" v-if="stats.special">{{ stats.special }}</div>
+
+    <!-- Gun Style (HDG and SMG only) -->
+    <div class="gun-row" v-if="styles.length">
+      <label class="field-label" for="gun-style-select">Gun Style</label>
+      <select id="gun-style-select" class="input-field" v-model="sheet.soul_gun.gunStyle">
+        <option value="">None</option>
+        <option v-for="style in styles" :key="style.key" :value="style.key">
+          {{ style.name }}
+        </option>
+      </select>
+    </div>
+    <div class="gun-special" v-if="sheet.gunStyleData[sheet.soul_gun.gunStyle]">
+      {{ sheet.gunStyleData[sheet.soul_gun.gunStyle].effect }}
     </div>
 
-    <div v-for="(cat, catKey) in categories" :key="catKey" class="quality-category">
-      <div class="category-label">{{ cat.label }}</div>
-      <div class="quality-grid">
-        <label
-          v-for="key in cat.keys"
-          :key="key"
-          class="quality-item"
-          :class="{ active: sheet.soul_gun.qualities[key] }"
-          :title="sheet.gunQualityDefs[key]?.effect"
-        >
-          <input
-            type="checkbox"
-            v-model="sheet.soul_gun.qualities[key]"
-          />
-          <span class="quality-name">{{ sheet.gunQualityDefs[key]?.name }}</span>
-          <span class="quality-effect">{{ sheet.gunQualityDefs[key]?.effect }}</span>
-        </label>
+    <!-- Firing pool state -->
+    <div class="gun-state">
+      <label class="state-toggle" :class="{ active: sheet.soul_gun.isAiming }">
+        <input type="checkbox" v-model="sheet.soul_gun.isAiming" />
+        Aiming (+1 to one die)
+      </label>
+      <label class="state-toggle" :class="{ warning: !sheet.soul_gun.hasReloaded }">
+        <input type="checkbox" v-model="sheet.soul_gun.hasReloaded" />
+        {{ sheet.soul_gun.hasReloaded ? 'Loaded' : 'Reload needed (Standard Action)' }}
+      </label>
+      <div class="gun-row">
+        <label class="field-label" for="firing-pool-bonus">Firing Pool Bonus</label>
+        <input id="firing-pool-bonus" class="input-field pool-bonus" type="number" v-model.number="sheet.soul_gun.firingPoolBonus" />
       </div>
+    </div>
+
+    <!-- Attachments -->
+    <div class="attachments-section">
+      <div class="category-label">Attachments (1 Rune Slot each)</div>
+      <RepeatingSection name="gunAttachments">
+        <RepeatingItem
+          v-for="row in sheet.sections.gunAttachments.rows"
+          :key="row._id"
+          :row="row"
+          name="gunAttachments"
+        >
+          <div class="attachment-row">
+            <input class="input-field" type="text" v-model="row.name" placeholder="Attachment name" />
+            <select class="input-field" v-model="row.type">
+              <option value="">Type</option>
+              <option v-for="t in attachmentTypes" :key="t" :value="t">{{ t.charAt(0).toUpperCase() + t.slice(1) }}</option>
+            </select>
+            <input class="input-field" type="text" v-model="row.effect" placeholder="Effect" />
+          </div>
+        </RepeatingItem>
+      </RepeatingSection>
     </div>
   </div>
 </template>
 
 <style lang="scss">
-.gun-qualities-selector {
+.gun-config-selector {
   display: grid;
   gap: var(--tiny-gap);
 }
 
-.qualities-summary {
-  display: flex;
-  flex-wrap: wrap;
+.gun-row {
+  display: grid;
+  grid-template-columns: auto 1fr;
   align-items: center;
-  gap: 4px;
+  gap: 8px;
 
-  .summary-label {
+  .field-label {
     font-size: 0.75rem;
     font-weight: bold;
     color: var(--header-blue);
+    text-transform: uppercase;
   }
 
-  .quality-tag {
-    font-size: 0.7rem;
-    padding: 2px 6px;
-    background: var(--header-blue);
-    color: white;
-    border-radius: 3px;
+  .pool-bonus {
+    max-width: 70px;
   }
 }
 
-.modifiers-summary {
+.gun-stats {
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
 
-  .mod-badge {
+  .stat-badge {
     font-size: 0.75rem;
     font-weight: bold;
     padding: 2px 8px;
     border-radius: 3px;
-
-    &.attack {
-      background: #2e7d32;
-      color: white;
-    }
-
-    &.damage {
-      background: #c62828;
-      color: white;
-    }
-
-    &.crit {
-      background: #f9a825;
-      color: black;
-    }
+    background: var(--header-blue);
+    color: white;
   }
 }
 
-.quality-category {
+.gun-special {
+  font-size: 0.7rem;
+  color: #666;
+  font-style: italic;
+}
+
+.gun-state {
   display: grid;
   gap: 4px;
-}
 
-.category-label {
-  font-size: 0.7rem;
-  font-weight: bold;
-  text-transform: uppercase;
-  color: var(--header-blue);
-  border-bottom: 1px solid var(--borderColor);
-  padding-bottom: 2px;
-}
+  .state-toggle {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.8rem;
+    cursor: pointer;
 
-.quality-grid {
-  display: grid;
-  gap: 2px;
-}
-
-.quality-item {
-  display: grid;
-  grid-template-columns: auto 1fr;
-  grid-template-rows: auto auto;
-  gap: 2px 8px;
-  padding: 4px 6px;
-  border-radius: 3px;
-  cursor: pointer;
-  font-size: 0.8rem;
-  border: 1px solid transparent;
-  transition: all 0.15s ease;
-
-  &:hover {
-    background: rgba(0, 0, 0, 0.05);
-  }
-
-  &.active {
-    background: rgba(74, 74, 138, 0.15);
-    border-color: var(--header-blue);
-
-    .quality-name {
-      color: var(--header-blue);
+    &.active {
+      color: #2e7d32;
       font-weight: bold;
     }
-  }
 
-  input[type="checkbox"] {
-    grid-row: span 2;
-    align-self: center;
-    margin: 0;
-    width: 16px;
-    height: 16px;
-  }
+    &.warning {
+      color: #c62828;
+      font-weight: bold;
+    }
 
-  .quality-name {
-    font-weight: 500;
+    input[type='checkbox'] {
+      margin: 0;
+      width: 14px;
+      height: 14px;
+    }
   }
+}
 
-  .quality-effect {
+.attachments-section {
+  display: grid;
+  gap: 4px;
+
+  .category-label {
     font-size: 0.7rem;
-    color: #666;
+    font-weight: bold;
+    text-transform: uppercase;
+    color: var(--header-blue);
+    border-bottom: 1px solid var(--borderColor);
+    padding-bottom: 2px;
+  }
+
+  .attachment-row {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    gap: 4px;
   }
 }
 
 html.dark {
-  .quality-item {
-    &:hover {
-      background: rgba(255, 255, 255, 0.1);
-    }
-
-    &.active {
-      background: rgba(74, 74, 138, 0.3);
-    }
-
-    .quality-effect {
-      color: #aaa;
-    }
+  .gun-special {
+    color: #aaa;
   }
 }
 </style>

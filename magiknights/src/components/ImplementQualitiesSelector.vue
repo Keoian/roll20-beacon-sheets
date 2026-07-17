@@ -5,10 +5,11 @@ import { useSheetStore } from '@/stores/sheetStore';
 const sheet = useSheetStore();
 
 const categories = {
-  mana: { label: 'Mana', keys: ['manaAttunement'] },
-  attack: { label: 'Spell Attack', keys: ['spellFocus'] },
-  dc: { label: 'Spell DC', keys: ['channeling'] },
-  special: { label: 'Special', keys: ['quickCast', 'wardingFocus'] }
+  mana: { label: 'Mana', keys: ['manaAttunement', 'manaConduit'] },
+  damage: { label: 'Spell Damage', keys: ['embolden'] },
+  healing: { label: 'Healing', keys: ['radiance'] },
+  defense: { label: 'Defense', keys: ['warding'] },
+  special: { label: 'Special', keys: ['cardConductor', 'light', 'twoHanded'] }
 };
 </script>
 
@@ -23,12 +24,19 @@ const categories = {
       <span v-if="sheet.hasManaAttunement" class="mod-badge mana">
         MP: MCO x 3
       </span>
-      <span v-if="sheet.implementSpellAttackBonus !== 0" class="mod-badge attack">
-        Spell Attack: +{{ sheet.implementSpellAttackBonus }}
+      <span v-if="sheet.emboldenDamageBonus !== 0" class="mod-badge attack">
+        Spell Damage: +{{ sheet.emboldenDamageBonus }}
       </span>
-      <span v-if="sheet.implementSpellDCBonus !== 0" class="mod-badge dc">
-        Spell DC: +{{ sheet.implementSpellDCBonus }}
+      <span v-if="sheet.radianceHealBonus !== 0" class="mod-badge mana">
+        Healing: +{{ sheet.radianceHealBonus }} HP
       </span>
+      <span v-if="sheet.wardingReduction !== 0" class="mod-badge dc">
+        Spell Damage Taken: -{{ sheet.wardingReduction }}
+      </span>
+      <label v-if="sheet.magical_implement.qualities.manaConduit" class="mod-badge mana conduit-tracker">
+        <input type="checkbox" v-model="sheet.manaConduitUsed" />
+        Mana Conduit {{ sheet.manaConduitUsed ? 'used' : 'available' }} (1/Sleep Phase)
+      </label>
     </div>
 
     <div v-for="(cat, catKey) in categories" :key="catKey" class="quality-category">

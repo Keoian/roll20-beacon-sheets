@@ -259,14 +259,6 @@ watch(() => sheet.elemental_affinity, (newAffinity) => {
           <input class="input-field" type="text" v-model="sheet.soul_gun.name" :id="`soul-gun-name`">
         </div>
         <div class="flex-box half-gap grow-label">
-          <label :for="`soul-gun-range`">Range</label>
-          <input class="input-field" type="text" v-model="sheet.soul_gun.range" :id="`soul-gun-range`">
-        </div>
-        <div class="flex-box half-gap grow-label">
-          <label :for="`soul-gun-damage`">Damage</label>
-          <input class="input-field" type="text" v-model="sheet.soul_gun.damage" :id="`soul-gun-damage`">
-        </div>
-        <div class="flex-box half-gap grow-label">
           <label :for="`soul-gun-damage-type`">Damage Type</label>
           <select class="input-field" v-model="sheet.soul_gun.damageType" :id="`soul-gun-damage-type`">
             <option value="physical">Physical</option>
@@ -275,21 +267,27 @@ watch(() => sheet.elemental_affinity, (newAffinity) => {
           </select>
         </div>
         <div class="grid">
-          <label class="properties-header">Qualities</label>
+          <label class="properties-header">Configuration</label>
           <GunQualitiesSelector />
+        </div>
+        <div class="gun-fire-actions">
+          <button class="gun-roll-btn" @click="sheet.rollGunAttack('rf')">Rapid Fire ({{ sheet.gunTypeStats.rf }}d8)</button>
+          <button class="gun-roll-btn" @click="sheet.rollGunAttack('md')" :disabled="!sheet.gunTypeStats.md || !sheet.soul_gun.hasReloaded">
+            Mag Dump ({{ sheet.gunTypeStats.md || '—' }}d8)
+          </button>
+          <button class="gun-roll-btn" @click="sheet.rollGunDamage">Damage</button>
+          <button class="gun-roll-btn" @click="sheet.reloadGun" v-if="!sheet.soul_gun.hasReloaded">Reload</button>
         </div>
       </template>
       <template v-slot:collapsed>
         <div class="collapsed-gun-actions">
-          <button class="gun-roll-btn" @click="sheet.rollGunAttack">Attack</button>
+          <button class="gun-roll-btn" @click="sheet.rollGunAttack('rf')">Rapid Fire</button>
+          <button class="gun-roll-btn" @click="sheet.rollGunAttack('md')" :disabled="!sheet.gunTypeStats.md || !sheet.soul_gun.hasReloaded">Mag Dump</button>
           <button class="gun-roll-btn" @click="sheet.rollGunDamage">Damage</button>
-          <span class="gun-name">{{ sheet.soul_gun.name || 'New Gun' }}</span>
+          <span class="gun-name">{{ sheet.soul_gun.name || sheet.gunTypeStats.name }}</span>
         </div>
         <span class="damage-type-tag" :class="sheet.soul_gun.damageType">
           {{ sheet.damageTypeLabels[sheet.soul_gun.damageType] || 'Physical' }}
-        </span>
-        <span v-if="sheet.activeGunQualities.length > 0" class="qualities-summary">
-          {{ sheet.activeGunQualities.join(', ') }}
         </span>
       </template>
     </Collapsible>
@@ -647,24 +645,38 @@ input{
 }
 
 .soul-gun-container {
+  .gun-fire-actions {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-top: var(--tiny-gap);
+  }
+
+  .gun-fire-actions .gun-roll-btn,
+  .collapsed-gun-actions .gun-roll-btn {
+    padding: 2px 8px;
+    font-size: 0.75rem;
+    background: var(--header-blue);
+    color: white;
+    border: none;
+    border-radius: 3px;
+    cursor: pointer;
+
+    &:hover {
+      opacity: 0.9;
+    }
+
+    &:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+  }
+
   .collapsed-gun-actions {
     display: flex;
     align-items: center;
     gap: 4px;
-
-    .gun-roll-btn {
-      padding: 2px 8px;
-      font-size: 0.75rem;
-      background: var(--header-blue);
-      color: white;
-      border: none;
-      border-radius: 3px;
-      cursor: pointer;
-
-      &:hover {
-        opacity: 0.9;
-      }
-    }
 
     .gun-name {
       font-weight: bold;
