@@ -108,7 +108,7 @@ const importSheetData = async (event) => {
             <input type="radio" :value="key" v-model="sheet.sleepEffect" />
             <span class="sleep-option-name">{{ data.name }}</span>
             <span class="sleep-option-detail">
-              <template v-if="data.stressRecovery > 0">-{{ data.stressRecovery }} Stress, -{{ data.exhaustionRecovery }} Exhaustion</template>
+              <template v-if="data.stressRecovery > 0">-{{ data.stressRecovery }} Stress, -{{ data.exhaustionRecovery }} Exhaustion{{ data.note ? ', ' : '' }}</template>
               <template v-if="data.note">{{ data.note }}</template>
             </span>
           </label>
